@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="theme-color" content="#f5f7fb">
+  <meta name="theme-color" content="#0f141d">
   <title>My English Dictionary</title>
   <style>
     :root {
@@ -433,6 +433,69 @@
       display: none;
     }
 
+    .auth-panel {
+      margin-bottom: 16px;
+      padding: 14px;
+      border: 1px solid #e4e8f1;
+      border-radius: 14px;
+      background: white;
+    }
+
+    .auth-form,
+    .auth-session-row,
+    .auth-actions,
+    .local-import-row {
+      display: flex;
+      align-items: end;
+      flex-wrap: wrap;
+      gap: 10px;
+    }
+
+    .auth-field {
+      display: grid;
+      flex: 1 1 180px;
+      gap: 5px;
+      color: #59647a;
+      font-size: 0.88rem;
+    }
+
+    .auth-field input {
+      width: 100%;
+    }
+
+    .auth-session-row {
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .auth-email {
+      color: #334155;
+      font-weight: 650;
+      overflow-wrap: anywhere;
+    }
+
+    .sync-status {
+      margin: 8px 0 0;
+      color: #68748a;
+      font-size: 0.88rem;
+    }
+
+    .sync-status.error {
+      color: #a43542;
+    }
+
+    .local-import-panel {
+      margin-top: 12px;
+      padding-top: 12px;
+      border-top: 1px solid #edf0f5;
+    }
+
+    .local-import-panel p {
+      margin: 0 0 8px;
+      color: #59647a;
+      font-size: 0.9rem;
+    }
+
     .review-card {
       display: flex;
       width: min(100%, 620px);
@@ -666,6 +729,19 @@
         width: 100%;
       }
 
+      .auth-form,
+      .auth-session-row {
+        align-items: stretch;
+        flex-direction: column;
+      }
+
+      .auth-actions,
+      .auth-actions button,
+      .auth-session-row button,
+      .local-import-row button {
+        width: 100%;
+      }
+
       .word-card-actions {
         width: 100%;
       }
@@ -691,6 +767,224 @@
         border-radius: 22px;
       }
     }
+
+    :root {
+      color-scheme: dark;
+      color: #e7edf7;
+      background: #0f141d;
+    }
+
+    body {
+      background: #0f141d;
+    }
+
+    button {
+      background: #5969df;
+    }
+
+    button:hover:not(:disabled) {
+      background: #4757c8;
+    }
+
+    .secondary-button,
+    .today-review-toggle {
+      color: #c1caff;
+      background: #252e40;
+    }
+
+    .secondary-button:hover:not(:disabled),
+    .today-review-toggle:hover:not(:disabled) {
+      background: #303b50;
+    }
+
+    .danger-button {
+      color: #ffb1b8;
+      background: #43272d;
+    }
+
+    .danger-button:hover:not(:disabled) {
+      background: #553038;
+    }
+
+    .success-button {
+      color: #b2f0c7;
+      background: #1d5135;
+    }
+
+    .success-button:hover:not(:disabled) {
+      background: #246340;
+    }
+
+    .unknown-button {
+      color: #ffc2c6;
+      background: #63353c;
+    }
+
+    .unknown-button:hover:not(:disabled) {
+      background: #794149;
+    }
+
+    .tabs,
+    .panel,
+    .result-card,
+    .word-card,
+    .review-card,
+    .review-stat,
+    .auth-panel,
+    .today-review-toggle,
+    .due-word {
+      border-color: #303b4d;
+      background: #1a212d;
+    }
+
+    .panel {
+      box-shadow: 0 12px 35px rgb(0 0 0 / 18%);
+    }
+
+    .review-card {
+      box-shadow: 0 12px 36px rgb(0 0 0 / 22%);
+    }
+
+    .tab-button {
+      color: #b3bdcf;
+    }
+
+    .tab-button:hover:not(:disabled) {
+      color: #c1caff;
+      background: #252e40;
+    }
+
+    .tab-button[aria-selected="true"] {
+      color: white;
+      background: #5969df;
+    }
+
+    input,
+    select,
+    .word-editor textarea {
+      border-color: #3a4659;
+      color: #e7edf7;
+      background: #111823;
+    }
+
+    input::placeholder {
+      color: #8d99ad;
+    }
+
+    button:focus-visible,
+    input:focus-visible,
+    select:focus-visible {
+      outline-color: #96a4ff;
+    }
+
+    .subtitle,
+    .section-description,
+    .hint,
+    .message,
+    .empty-state,
+    .meta,
+    .example,
+    .word-card p,
+    .sync-status,
+    .due-word small,
+    footer {
+      color: #aab5c8;
+    }
+
+    .eyebrow,
+    .part-of-speech {
+      color: #aebaff;
+    }
+
+    .message.error,
+    .sync-status.error {
+      color: #ffadb5;
+    }
+
+    .message.success {
+      color: #9ce0b1;
+    }
+
+    .note {
+      color: #c0cada;
+      background: #1c2634;
+    }
+
+    .translation-value {
+      color: #e1e7f1;
+    }
+
+    .meaning-group,
+    .word-editor,
+    .review-details,
+    .local-import-panel {
+      border-color: #303b4d;
+    }
+
+    .word-editor label,
+    .auth-field,
+    .local-import-panel p {
+      color: #b6c0d0;
+    }
+
+    .auth-email {
+      color: #e7edf7;
+    }
+
+    .word-card .mastered-status,
+    .review-rating-button.success-button {
+      color: #b2f0c7;
+    }
+
+    .review-rating-button.unknown-button {
+      color: #ffc2c6;
+      background: #43272d;
+    }
+
+    .review-rating-button.unknown-button:hover:not(:disabled) {
+      background: #553038;
+    }
+
+    .review-rating-button.success-button {
+      background: #1d5135;
+    }
+
+    .review-rating-button.success-button:hover:not(:disabled) {
+      background: #246340;
+    }
+
+    .cefr-green {
+      color: #9ce0b1;
+      background: #1a3b2b;
+    }
+
+    .cefr-blue {
+      color: #b0c5ff;
+      background: #233451;
+    }
+
+    .cefr-orange {
+      color: #ffd08a;
+      background: #493316;
+    }
+
+    .cefr-red {
+      color: #ffadb5;
+      background: #49272d;
+    }
+
+    .cefr-neutral {
+      color: #c0cada;
+      background: #303a4a;
+    }
+
+    .definition-editor {
+      border-color: #3a4659;
+    }
+
+    a {
+      color: #aebaff;
+    }
   </style>
 </head>
 <body>
@@ -700,6 +994,46 @@
       <h1>My English Dictionary</h1>
       <p class="subtitle">Look up words, save them, and review at your own pace.</p>
     </header>
+
+    <section class="auth-panel" aria-label="Account and synchronization">
+      <div id="authSignedOut">
+        <form class="auth-form" id="authForm">
+          <label class="auth-field">
+            Email
+            <input id="authEmail" type="email" autocomplete="email" required>
+          </label>
+          <label class="auth-field">
+            Password
+            <input id="authPassword" type="password" autocomplete="current-password" minlength="6" required>
+          </label>
+          <div class="auth-actions">
+            <button id="loginButton" type="button">Log in</button>
+            <button class="secondary-button" id="signupButton" type="button">Sign up</button>
+          </div>
+        </form>
+        <p class="sync-status" id="authMessage" role="status" aria-live="polite"></p>
+      </div>
+      <div id="authSignedIn" hidden>
+        <div class="auth-session-row">
+          <span class="auth-email" id="authUserEmail"></span>
+          <button class="secondary-button" id="logoutButton" type="button">Log out</button>
+        </div>
+        <p class="sync-status" id="syncStatus" role="status" aria-live="polite">Loading your cloud vocabulary…</p>
+        <div class="local-import-panel" id="localImportPanel" hidden>
+          <p id="localImportSummary"></p>
+          <div class="local-import-row">
+            <button class="secondary-button" id="importLocalButton" type="button">Import local vocabulary</button>
+          </div>
+        </div>
+        <div class="local-import-panel" id="syncConflictPanel" hidden>
+          <p id="syncConflictMessage"></p>
+          <div class="local-import-row">
+            <button class="secondary-button" id="useCloudButton" type="button">Use cloud version</button>
+            <button id="keepLocalButton" type="button">Keep this device’s version</button>
+          </div>
+        </div>
+      </div>
+    </section>
 
     <nav class="tabs" role="tablist" aria-label="App sections">
       <button class="tab-button" id="dictionaryTab" type="button" role="tab" aria-selected="true" aria-controls="dictionaryPanel">Dictionary</button>
@@ -724,7 +1058,7 @@
 
     <section class="panel" id="vocabularyPanel" role="tabpanel" aria-labelledby="vocabularyTab" hidden>
       <h2 class="section-heading">My Vocabulary</h2>
-      <p class="section-description">Your words are stored only in this browser. Export a JSON backup to move them to another device.</p>
+      <p class="section-description">Your words stay on this device when signed out. Sign in to sync them across devices.</p>
       <div class="toolbar">
         <input id="vocabularySearch" type="search" placeholder="Search saved words" aria-label="Search saved words">
         <select id="sortWords" aria-label="Sort saved words">
@@ -780,14 +1114,23 @@
     <footer>
       Dictionary data from <a href="https://dictionaryapi.dev/" target="_blank" rel="noopener noreferrer">Free Dictionary API</a>.
       Scheduling uses <a href="https://github.com/open-spaced-repetition/ts-fsrs" target="_blank" rel="noopener noreferrer">ts-fsrs</a> (MIT).
-      Saved words, translations, and review history stay in this browser unless you export them.
+      Your vocabulary stays on this device when signed out; sign in to sync across devices or export a backup.
     </footer>
   </main>
 
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script>
+    const SUPABASE_URL = "https://gejjncvzepuuojbhptat.supabase.co";
+    const SUPABASE_PUBLISHABLE_KEY = "sb_publishable_bvQXAKMXigt540JAjUEeOA_6ntmE37v";
+    const GITHUB_PAGES_URL = "https://seraphieshi.github.io/MyVacabularyApp/";
     const STORAGE_KEY = "myEnglishDictionary.v1";
     const TRANSLATION_CACHE_KEY = "myEnglishDictionary.translations.v1";
     const CEFR_OVERRIDES_KEY = "myEnglishDictionary.cefrOverrides.v1";
+    const CLOUD_CACHE_PREFIX = STORAGE_KEY + ".cloud.";
+    const CLOUD_META_PREFIX = STORAGE_KEY + ".sync.";
+    const USER_TRANSLATION_CACHE_PREFIX = TRANSLATION_CACHE_KEY + ".user.";
+    const USER_CEFR_OVERRIDES_PREFIX = CEFR_OVERRIDES_KEY + ".user.";
+    const CLOUD_ROW_COLUMNS = "id,created_at,updated_at,user_id,word,chinese_meaning,cefr_level,is_known,next_review,review_data,word_data";
     const MAX_TRANSLATIONS_PER_SEARCH = 4;
     const FSRS_PACKAGE_VERSION = "6.0.0";
     const FSRS_MODEL_VERSION = "FSRS-7";
@@ -840,12 +1183,59 @@
       totalVocabularyCount: document.getElementById("totalVocabularyCount"),
       dueTodayCount: document.getElementById("dueTodayCount"),
       newWordsCount: document.getElementById("newWordsCount"),
-      reviewedTodayCount: document.getElementById("reviewedTodayCount")
+      reviewedTodayCount: document.getElementById("reviewedTodayCount"),
+      authForm: document.getElementById("authForm"),
+      authEmail: document.getElementById("authEmail"),
+      authPassword: document.getElementById("authPassword"),
+      loginButton: document.getElementById("loginButton"),
+      signupButton: document.getElementById("signupButton"),
+      logoutButton: document.getElementById("logoutButton"),
+      authSignedOut: document.getElementById("authSignedOut"),
+      authSignedIn: document.getElementById("authSignedIn"),
+      authUserEmail: document.getElementById("authUserEmail"),
+      authMessage: document.getElementById("authMessage"),
+      syncStatus: document.getElementById("syncStatus"),
+      localImportPanel: document.getElementById("localImportPanel"),
+      localImportSummary: document.getElementById("localImportSummary"),
+      importLocalButton: document.getElementById("importLocalButton"),
+      syncConflictPanel: document.getElementById("syncConflictPanel"),
+      syncConflictMessage: document.getElementById("syncConflictMessage"),
+      useCloudButton: document.getElementById("useCloudButton"),
+      keepLocalButton: document.getElementById("keepLocalButton")
     };
 
+    let supabaseClient = null;
+    let authSession = null;
+    let cloudUserId = "";
+    let cloudReady = false;
+    let syncInProgress = false;
+    let syncQueued = false;
+    let suppressCloudTracking = false;
+    let authLoadingUserId = "";
+    let authLoadToken = 0;
+    let lastCloudRefresh = 0;
+    let cloudConflict = null;
+    let cloudCacheRecovery = null;
+    let cloudRowsByFsrsId = new Map();
+    let syncMeta = { rows: {}, pending: {} };
+    let vocabularySnapshot = [];
     let translationCache = loadStoredObject(TRANSLATION_CACHE_KEY);
     let cefrOverrides = loadCefrOverrides();
     let vocabulary = loadVocabulary();
+    vocabularySnapshot = cloneData(vocabulary);
+    try {
+      if (window.supabase && typeof window.supabase.createClient === "function") {
+        supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY, {
+          auth: {
+            persistSession: true,
+            autoRefreshToken: true,
+            detectSessionInUrl: true
+          }
+        });
+      }
+    } catch (error) {
+      console.error("Could not initialize Supabase:", error);
+    }
     let lookupResult = null;
     let activeReviewWord = "";
     let answerRevealed = false;
@@ -900,8 +1290,8 @@
       }
     }
 
-    function loadCefrOverrides() {
-      const saved = loadStoredObject(CEFR_OVERRIDES_KEY);
+    function loadCefrOverrides(storageKey) {
+      const saved = loadStoredObject(storageKey || currentCefrOverridesKey());
       const overrides = {};
       Object.keys(saved).forEach(function (key) {
         const value = saved[key];
@@ -922,6 +1312,83 @@
         setMessage(messageElement, "Could not save this change in browser storage. Check available storage space.", "error");
         return false;
       }
+    }
+
+    function cloneData(value) {
+      return JSON.parse(JSON.stringify(value));
+    }
+
+    function cloudVocabularyCacheKey(userId) {
+      return CLOUD_CACHE_PREFIX + userId;
+    }
+
+    function cloudSyncMetaKey(userId) {
+      return CLOUD_META_PREFIX + userId;
+    }
+
+    function currentTranslationCacheKey() {
+      return cloudUserId
+        ? USER_TRANSLATION_CACHE_PREFIX + cloudUserId
+        : TRANSLATION_CACHE_KEY;
+    }
+
+    function currentCefrOverridesKey() {
+      return cloudUserId
+        ? USER_CEFR_OVERRIDES_PREFIX + cloudUserId
+        : CEFR_OVERRIDES_KEY;
+    }
+
+    function loadUserVocabularyCache(userId) {
+      const stored = localStorage.getItem(cloudVocabularyCacheKey(userId));
+      if (stored === null) {
+        return null;
+      }
+      const parsed = JSON.parse(stored);
+      if (!Array.isArray(parsed)) {
+        throw new Error("The local cloud cache is not a vocabulary list.");
+      }
+      const normalized = parsed.map(normalizeSavedEntry);
+      if (normalized.some(function (entry) { return entry === null; })) {
+        throw new Error("The local cloud cache contains an invalid entry.");
+      }
+      return normalized;
+    }
+
+    function loadCloudSyncMeta(userId) {
+      const stored = localStorage.getItem(cloudSyncMetaKey(userId));
+      if (stored === null) {
+        return { rows: {}, pending: {} };
+      }
+      const parsed = JSON.parse(stored);
+      if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
+        throw new Error("Cloud sync metadata is invalid.");
+      }
+      return {
+        rows: parsed.rows && typeof parsed.rows === "object" ? parsed.rows : {},
+        pending: parsed.pending && typeof parsed.pending === "object" ? parsed.pending : {}
+      };
+    }
+
+    function saveCloudSyncMeta(userId) {
+      try {
+        localStorage.setItem(cloudSyncMetaKey(userId), JSON.stringify(syncMeta));
+        return true;
+      } catch (error) {
+        console.error("Could not save cloud sync metadata:", error);
+        return false;
+      }
+    }
+
+    function stableStringify(value) {
+      if (Array.isArray(value)) {
+        return "[" + value.map(stableStringify).join(",") + "]";
+      }
+      if (value && typeof value === "object") {
+        return "{" + Object.keys(value).sort().map(function (key) {
+          return JSON.stringify(key) + ":" + stableStringify(value[key]);
+        }).join(",") + "}";
+      }
+      return JSON.stringify(value);
     }
 
     function loadVocabulary() {
@@ -1189,7 +1656,7 @@
     function storeTranslation(key, text, source, messageElement) {
       const previous = translationCache[key];
       translationCache[key] = { text: text, source: source };
-      if (saveStoredObject(TRANSLATION_CACHE_KEY, translationCache, messageElement)) {
+      if (saveStoredObject(currentTranslationCacheKey(), translationCache, messageElement)) {
         return true;
       }
       if (previous) {
@@ -1359,13 +1826,1217 @@
 
     function saveVocabulary() {
       try {
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(vocabulary));
+        localStorage.setItem(
+          cloudUserId ? cloudVocabularyCacheKey(cloudUserId) : STORAGE_KEY,
+          JSON.stringify(vocabulary)
+        );
+        let metadataSaved = true;
+        if (cloudUserId && !suppressCloudTracking) {
+          trackCloudChanges(vocabularySnapshot, vocabulary);
+          metadataSaved = saveCloudSyncMeta(cloudUserId);
+          if (!metadataSaved) {
+            setSyncStatus("Saved on this device; sync details could not be saved.", true);
+          }
+        }
+        vocabularySnapshot = cloneData(vocabulary);
+        if (cloudCacheRecovery) {
+          refreshCloudCacheRecovery(metadataSaved);
+        } else if (cloudUserId && cloudReady && metadataSaved) {
+          queueCloudSync();
+        }
         return true;
       } catch (error) {
         console.error("Could not save vocabulary:", error);
         setMessage(elements.vocabularyMessage, "Could not save changes in this browser. Check available storage space.", "error");
         return false;
       }
+    }
+
+    function setSyncStatus(text, isError) {
+      elements.syncStatus.textContent = text;
+      elements.syncStatus.className = "sync-status" + (isError ? " error" : "");
+    }
+
+    function entryFingerprint(entry) {
+      return stableStringify(normalizeSavedEntry(entry));
+    }
+
+    function nextCloudUpdatedAt(previousUpdatedAt) {
+      const now = Date.now();
+      const previous = Date.parse(previousUpdatedAt);
+      return new Date(Number.isFinite(previous) && previous >= now ? previous + 1 : now).toISOString();
+    }
+
+    function cloudEntryPayload(entry, isInsert, previousUpdatedAt) {
+      const reviewData = {
+        fsrsVersion: entry.fsrsVersion,
+        fsrsCard: entry.fsrsCard,
+        reviewStatus: entry.reviewStatus,
+        masteredAt: entry.masteredAt,
+        reviewHistory: entry.reviewHistory,
+        reviews: entry.reviews,
+        known: entry.known,
+        unknown: entry.unknown,
+        dueAt: entry.dueAt
+      };
+      const payload = {
+        user_id: cloudUserId,
+        word: entry.word,
+        chinese_meaning: entry.translationZh || "",
+        cefr_level: entry.cefrLevel || "",
+        is_known: entry.reviewStatus === "mastered",
+        next_review: entry.reviewStatus === "mastered" ? null : entryDueAt(entry),
+        review_data: reviewData,
+        word_data: cloneData(entry),
+        updated_at: nextCloudUpdatedAt(previousUpdatedAt)
+      };
+      if (isInsert) {
+        payload.created_at = entry.addedAt;
+      }
+      return payload;
+    }
+
+    function cloudRowToEntry(row) {
+      const wordData = row.word_data && typeof row.word_data === "object" && !Array.isArray(row.word_data)
+        ? row.word_data
+        : {};
+      const reviewData = row.review_data && typeof row.review_data === "object" && !Array.isArray(row.review_data)
+        ? row.review_data
+        : {};
+      const rawEntry = Object.assign({}, wordData, reviewData, {
+        word: row.word,
+        translationZh: row.chinese_meaning || wordData.translationZh || "",
+        cefrLevel: typeof row.cefr_level === "string" ? row.cefr_level : (wordData.cefrLevel || ""),
+        reviewStatus: row.is_known ? "mastered" : "active",
+        masteredAt: row.is_known ? (reviewData.masteredAt || wordData.masteredAt || "") : "",
+        dueAt: row.is_known
+          ? ""
+          : (row.next_review || reviewData.dueAt || wordData.dueAt || row.created_at)
+      });
+      rawEntry.addedAt = rawEntry.addedAt || row.created_at;
+      const entry = normalizeSavedEntry(rawEntry);
+      if (!entry) {
+        throw new Error("A cloud vocabulary row has an invalid word.");
+      }
+      return entry;
+    }
+
+    function cloudRowMetadata(row) {
+      const entry = cloudRowToEntry(row);
+      if (!row.updated_at) {
+        throw new Error("The vocabulary table is missing its updated_at value.");
+      }
+      return {
+        id: row.id,
+        updatedAt: row.updated_at,
+        fingerprint: entryFingerprint(entry),
+        word: entry.word
+      };
+    }
+
+    function mapCloudRows(rows) {
+      const mapped = new Map();
+      rows.forEach(function (row) {
+        const entry = cloudRowToEntry(row);
+        if (mapped.has(entry.fsrsId)) {
+          throw new Error("The cloud vocabulary contains duplicate review IDs.");
+        }
+        mapped.set(entry.fsrsId, { row: row, entry: entry });
+      });
+      return mapped;
+    }
+
+    function findCloudRecordForEntry(entry, rowsByFsrsId) {
+      const byId = rowsByFsrsId.get(entry.fsrsId);
+      if (byId) {
+        return byId;
+      }
+      const word = entry.word.toLocaleLowerCase();
+      return Array.from(rowsByFsrsId.values()).find(function (record) {
+        return record.entry.word.toLocaleLowerCase() === word;
+      }) || null;
+    }
+
+    function findUntrackedCacheDifferences(cachedEntries, rowsByFsrsId, pendingChanges) {
+      const pendingByFsrsId = pendingChanges || {};
+      return (cachedEntries || []).reduce(function (differences, entry) {
+        const cloudRecord = findCloudRecordForEntry(entry, rowsByFsrsId);
+        const alreadyPending = Object.keys(pendingByFsrsId).some(function (fsrsId) {
+          const pending = pendingByFsrsId[fsrsId];
+          return fsrsId === entry.fsrsId ||
+            (cloudRecord && pending.id &&
+              String(pending.id) === String(cloudRecord.row.id)) ||
+            (pending.entry && typeof pending.entry.word === "string" &&
+              pending.entry.word.toLocaleLowerCase() === entry.word.toLocaleLowerCase());
+        });
+        if (!alreadyPending &&
+            (!cloudRecord || entryFingerprint(entry) !== entryFingerprint(cloudRecord.entry))) {
+          differences.push({
+            entry: cloneData(entry),
+            row: cloudRecord ? cloneData(cloudRecord.row) : null
+          });
+        }
+        return differences;
+      }, []);
+    }
+
+    function showCloudCacheRecovery() {
+      const count = cloudCacheRecovery.entries.length;
+      elements.syncConflictMessage.textContent =
+        count + " local word change" + (count === 1 ? " differs" : "s differ") +
+        " from cloud without saved sync progress. Choose “Keep this device’s version” to upload only these differences while preserving cloud-only words, or “Use cloud version” to discard only these local differences. Export a JSON backup first if you need both.";
+      elements.syncConflictPanel.hidden = false;
+      elements.importLocalButton.disabled = true;
+      setSyncStatus("Sync paused until you resolve the local cache difference.", true);
+    }
+
+    function refreshCloudCacheRecovery(canQueueSync) {
+      if (!cloudCacheRecovery) {
+        return;
+      }
+      const currentById = new Map(vocabulary.map(function (entry) {
+        return [entry.fsrsId, entry];
+      }));
+      cloudCacheRecovery.entries = cloudCacheRecovery.entries.map(function (difference) {
+        const current = currentById.get(difference.entry.fsrsId);
+        return current
+          ? { entry: cloneData(current), row: difference.row }
+          : null;
+      }).filter(Boolean);
+      if (cloudCacheRecovery.entries.length === 0) {
+        cloudCacheRecovery = null;
+        elements.syncConflictPanel.hidden = true;
+        updateLocalImportSummary();
+        if (canQueueSync && cloudReady) {
+          queueCloudSync();
+        }
+        return;
+      }
+      showCloudCacheRecovery();
+      if (!canQueueSync) {
+        setSyncStatus("Local changes are retained, but sync details could not be saved; sync is paused.", true);
+      }
+    }
+
+    function trackCloudChanges(previousEntries, currentEntries) {
+      const previousById = new Map(previousEntries.map(function (entry) {
+        return [entry.fsrsId, entry];
+      }));
+      const currentById = new Map(currentEntries.map(function (entry) {
+        return [entry.fsrsId, entry];
+      }));
+
+      previousById.forEach(function (previous, fsrsId) {
+        if (!currentById.has(fsrsId)) {
+          const pending = syncMeta.pending[fsrsId];
+          const baseline = syncMeta.rows[fsrsId];
+          if (!baseline && (!pending || !pending.id)) {
+            delete syncMeta.pending[fsrsId];
+            return;
+          }
+          syncMeta.pending[fsrsId] = {
+            type: "delete",
+            id: (pending && pending.id) || (baseline && baseline.id),
+            baseUpdatedAt: (pending && pending.baseUpdatedAt) || (baseline && baseline.updatedAt),
+            baselineFingerprint: (pending && pending.baselineFingerprint) || (baseline && baseline.fingerprint),
+            entry: null
+          };
+        }
+      });
+
+      currentById.forEach(function (entry, fsrsId) {
+        const previous = previousById.get(fsrsId);
+        if (previous && entryFingerprint(previous) === entryFingerprint(entry)) {
+          return;
+        }
+        const pending = syncMeta.pending[fsrsId];
+        const baseline = syncMeta.rows[fsrsId] || {};
+        const cloudRow = cloudRowsByFsrsId.get(fsrsId);
+        syncMeta.pending[fsrsId] = {
+          type: "upsert",
+          id: (pending && pending.id) || baseline.id || (cloudRow && cloudRow.row.id) || null,
+          baseUpdatedAt: (pending && pending.baseUpdatedAt) || baseline.updatedAt ||
+            (cloudRow && cloudRow.row.updated_at) || null,
+          baselineFingerprint: (pending && pending.baselineFingerprint) || baseline.fingerprint ||
+            (cloudRow && entryFingerprint(cloudRow.entry)) || null,
+          entry: cloneData(entry)
+        };
+      });
+    }
+
+    function saveUserVocabularyCache() {
+      if (!cloudUserId) {
+        return true;
+      }
+      try {
+        localStorage.setItem(cloudVocabularyCacheKey(cloudUserId), JSON.stringify(vocabulary));
+        return true;
+      } catch (error) {
+        console.error("Could not save the user vocabulary cache:", error);
+        setSyncStatus("Cloud data is loaded, but the local cache could not be saved.", true);
+        return false;
+      }
+    }
+
+    async function fetchCloudRows(userId) {
+      const pageSize = 1000;
+      const rows = [];
+      let offset = 0;
+      while (true) {
+        const result = await supabaseClient
+          .from("vocabulary")
+          .select(CLOUD_ROW_COLUMNS)
+          .eq("user_id", userId)
+          .order("id", { ascending: true })
+          .range(offset, offset + pageSize - 1);
+        if (result.error) {
+          throw result.error;
+        }
+        if (!Array.isArray(result.data)) {
+          throw new Error("Supabase returned an invalid vocabulary response.");
+        }
+        rows.push.apply(rows, result.data);
+        if (result.data.length < pageSize) {
+          return rows;
+        }
+        offset += pageSize;
+      }
+    }
+
+    function setCloudRows(rows) {
+      cloudRowsByFsrsId = mapCloudRows(rows);
+    }
+
+    function saveCloudRowBaseline(fsrsId, row) {
+      syncMeta.rows[fsrsId] = cloudRowMetadata(row);
+      cloudRowsByFsrsId.set(fsrsId, { row: row, entry: cloudRowToEntry(row) });
+    }
+
+    function showCloudConflict(fsrsId, pending, row, reason) {
+      cloudConflict = {
+        fsrsId: fsrsId,
+        pending: cloneData(pending),
+        row: row ? cloneData(row) : null
+      };
+      const word = pending.entry
+        ? pending.entry.word
+        : ((syncMeta.rows[fsrsId] && syncMeta.rows[fsrsId].word) || "a saved word");
+      let message = "“" + word + "” " + reason + " Choose which version to keep.";
+      if (reason.indexOf("already exists") >= 0) {
+        message += " Keeping this device’s version will replace the cloud copy; export a JSON backup first if you need both.";
+      } else if (!row) {
+        message += " Choosing the cloud version removes this local copy.";
+      }
+      elements.syncConflictMessage.textContent = message;
+      elements.syncConflictPanel.hidden = false;
+      setSyncStatus("Sync paused until you resolve a conflict.", true);
+    }
+
+    async function fetchCloudRowById(rowId, userId) {
+      const result = await supabaseClient
+        .from("vocabulary")
+        .select(CLOUD_ROW_COLUMNS)
+        .eq("id", rowId)
+        .eq("user_id", userId)
+        .maybeSingle();
+      if (result.error) {
+        throw result.error;
+      }
+      return result.data;
+    }
+
+    async function fetchCloudRowForWord(word, userId) {
+      const rows = await fetchCloudRows(userId);
+      setCloudRows(rows);
+      return rows.find(function (row) {
+        return typeof row.word === "string" &&
+          row.word.toLocaleLowerCase() === word.toLocaleLowerCase();
+      }) || null;
+    }
+
+    function persistCloudCacheAndRender() {
+      if (!saveUserVocabularyCache()) {
+        return false;
+      }
+      vocabularySnapshot = cloneData(vocabulary);
+      renderVocabulary();
+      renderReview();
+      return true;
+    }
+
+    function queueCloudSync() {
+      if (!cloudUserId || !cloudReady || cloudConflict || cloudCacheRecovery) {
+        return;
+      }
+      if (syncInProgress) {
+        syncQueued = true;
+        return;
+      }
+
+      syncInProgress = true;
+      elements.logoutButton.disabled = true;
+      setSyncStatus("Syncing changes…", false);
+      let syncError = null;
+      const syncingUserId = cloudUserId;
+      syncPendingChanges().catch(function (error) {
+        syncError = error;
+        console.error("Vocabulary cloud sync failed:", error);
+        setSyncStatus(
+          "Cloud sync did not complete or its result could not be confirmed. Local changes are retained: " +
+            error.message,
+          true
+        );
+      }).finally(function () {
+        syncInProgress = false;
+        elements.logoutButton.disabled = false;
+        if (syncQueued) {
+          syncQueued = false;
+          queueCloudSync();
+        } else if (syncError || cloudUserId !== syncingUserId || !cloudReady) {
+          return;
+        } else if (!cloudConflict && Object.keys(syncMeta.pending).length === 0) {
+          setSyncStatus("Synced", false);
+        } else if (!cloudConflict) {
+          setSyncStatus("Changes are saved on this device and waiting to sync.", true);
+        }
+      });
+    }
+
+    async function syncPendingChanges() {
+      const userId = cloudUserId;
+      if (cloudCacheRecovery) {
+        return;
+      }
+      const pendingIds = Object.keys(syncMeta.pending);
+      for (let index = 0; index < pendingIds.length; index += 1) {
+        if (cloudUserId !== userId || !cloudReady) {
+          return;
+        }
+        const fsrsId = pendingIds[index];
+        const pending = syncMeta.pending[fsrsId];
+        if (!pending) {
+          continue;
+        }
+
+        if (pending.type === "delete") {
+          if (!pending.id) {
+            delete syncMeta.pending[fsrsId];
+            continue;
+          }
+          const deletion = await supabaseClient
+            .from("vocabulary")
+            .delete()
+            .eq("id", pending.id)
+            .eq("user_id", userId)
+            .eq("updated_at", pending.baseUpdatedAt)
+            .select("id");
+          if (cloudUserId !== userId) {
+            return;
+          }
+          if (deletion.error) {
+            throw deletion.error;
+          }
+          if (!deletion.data || deletion.data.length === 0) {
+            const latest = await fetchCloudRowById(pending.id, userId);
+            if (cloudUserId !== userId) {
+              return;
+            }
+            if (!latest) {
+              cloudRowsByFsrsId.delete(fsrsId);
+              delete syncMeta.rows[fsrsId];
+              delete syncMeta.pending[fsrsId];
+              if (!saveCloudSyncMeta(userId)) {
+                throw new Error("The cloud word was already removed, but sync progress could not be saved locally.");
+              }
+              continue;
+            }
+            showCloudConflict(fsrsId, pending, latest, "was changed or removed on another device.");
+            return;
+          }
+          cloudRowsByFsrsId.delete(fsrsId);
+          delete syncMeta.rows[fsrsId];
+          delete syncMeta.pending[fsrsId];
+          if (!saveCloudSyncMeta(userId)) {
+            throw new Error("The cloud deletion completed, but sync progress could not be saved locally.");
+          }
+          continue;
+        }
+
+        const entry = normalizeSavedEntry(pending.entry);
+        if (!entry) {
+          throw new Error("A pending local change has an invalid word.");
+        }
+        let row = null;
+        if (pending.id) {
+          let payload = cloudEntryPayload(entry, false, pending.baseUpdatedAt);
+          let update = await supabaseClient
+            .from("vocabulary")
+            .update(payload)
+            .eq("id", pending.id)
+            .eq("user_id", userId)
+            .eq("updated_at", pending.baseUpdatedAt)
+            .select(CLOUD_ROW_COLUMNS);
+          if (cloudUserId !== userId) {
+            return;
+          }
+          if (update.error) {
+            if (update.error.code === "23505") {
+              throw new Error("That word already exists in your cloud vocabulary. Your local change is saved; rename it before syncing.");
+            }
+            throw update.error;
+          }
+          row = update.data && update.data[0];
+          if (!row) {
+            const latest = await fetchCloudRowById(pending.id, userId);
+            if (cloudUserId !== userId) {
+              return;
+            }
+            if (!latest) {
+              cloudRowsByFsrsId.forEach(function (cloudRecord, cloudFsrsId) {
+                if (String(cloudRecord.row.id) === String(pending.id)) {
+                  cloudRowsByFsrsId.delete(cloudFsrsId);
+                  delete syncMeta.rows[cloudFsrsId];
+                }
+              });
+            }
+            if (latest && pending.baselineFingerprint &&
+                entryFingerprint(cloudRowToEntry(latest)) === pending.baselineFingerprint) {
+              pending.baseUpdatedAt = latest.updated_at;
+              if (!saveCloudSyncMeta(userId)) {
+                throw new Error("Could not save refreshed sync details; the cloud word was not changed.");
+              }
+              payload = cloudEntryPayload(entry, false, pending.baseUpdatedAt);
+              update = await supabaseClient
+                .from("vocabulary")
+                .update(payload)
+                .eq("id", pending.id)
+                .eq("user_id", userId)
+                .eq("updated_at", pending.baseUpdatedAt)
+                .select(CLOUD_ROW_COLUMNS);
+              if (cloudUserId !== userId) {
+                return;
+              }
+              if (update.error) {
+                if (update.error.code === "23505") {
+                  throw new Error("That word already exists in your cloud vocabulary. Your local change is saved; rename it before syncing.");
+                }
+                throw update.error;
+              }
+              row = update.data && update.data[0];
+            }
+            if (!row) {
+              showCloudConflict(fsrsId, pending, latest, "was changed or removed on another device.");
+              return;
+            }
+          }
+        } else {
+          const duplicate = Array.from(cloudRowsByFsrsId.values()).find(function (cloudRecord) {
+            return cloudRecord.entry.word.toLocaleLowerCase() === entry.word.toLocaleLowerCase() &&
+              cloudRecord.entry.fsrsId !== fsrsId;
+          });
+          if (duplicate) {
+            showCloudConflict(fsrsId, pending, duplicate.row, "already exists in this account's cloud vocabulary.");
+            return;
+          }
+          const insert = await supabaseClient
+            .from("vocabulary")
+            .insert(cloudEntryPayload(entry, true))
+            .select(CLOUD_ROW_COLUMNS)
+            .single();
+          if (cloudUserId !== userId) {
+            return;
+          }
+          if (insert.error) {
+            if (insert.error.code === "23505") {
+              const duplicateRow = await fetchCloudRowForWord(entry.word, userId);
+              if (cloudUserId !== userId) {
+                return;
+              }
+              showCloudConflict(fsrsId, pending, duplicateRow, "already exists in this account's cloud vocabulary.");
+              return;
+            }
+            throw insert.error;
+          }
+          row = insert.data;
+        }
+
+        const savedEntry = cloudRowToEntry(row);
+        cloudRowsByFsrsId.forEach(function (cloudRecord, cloudFsrsId) {
+          if (cloudFsrsId !== savedEntry.fsrsId &&
+              String(cloudRecord.row.id) === String(row.id)) {
+            cloudRowsByFsrsId.delete(cloudFsrsId);
+            delete syncMeta.rows[cloudFsrsId];
+          }
+        });
+        const currentPending = syncMeta.pending[fsrsId];
+        syncMeta.rows[fsrsId] = cloudRowMetadata(row);
+        cloudRowsByFsrsId.set(savedEntry.fsrsId, { row: row, entry: savedEntry });
+        if (currentPending && currentPending.type === "upsert" &&
+            currentPending.entry &&
+            entryFingerprint(currentPending.entry) === entryFingerprint(entry)) {
+          delete syncMeta.pending[fsrsId];
+        } else if (currentPending) {
+          currentPending.id = row.id;
+          currentPending.baseUpdatedAt = row.updated_at;
+          currentPending.baselineFingerprint = entryFingerprint(savedEntry);
+        } else if (!vocabulary.some(function (item) { return item.fsrsId === fsrsId; })) {
+          syncMeta.pending[fsrsId] = {
+            type: "delete",
+            id: row.id,
+            baseUpdatedAt: row.updated_at,
+            baselineFingerprint: entryFingerprint(savedEntry),
+            entry: null
+          };
+        } else {
+          syncMeta.pending[fsrsId] = {
+            type: "upsert",
+            id: row.id,
+            baseUpdatedAt: row.updated_at,
+            baselineFingerprint: entryFingerprint(savedEntry),
+            entry: cloneData(vocabulary.find(function (item) { return item.fsrsId === fsrsId; }))
+          };
+        }
+        if (!saveCloudSyncMeta(userId)) {
+          throw new Error("The cloud change completed, but sync progress could not be saved locally.");
+        }
+      }
+      updateLocalImportSummary();
+    }
+
+    function updateLocalImportSummary() {
+      if (!cloudUserId || !cloudReady) {
+        elements.localImportPanel.hidden = true;
+        return;
+      }
+      try {
+        const localEntries = loadVocabulary();
+        const cloudWords = new Set(Array.from(cloudRowsByFsrsId.values()).map(function (item) {
+          return item.entry.word.toLocaleLowerCase();
+        }));
+        const importable = localEntries.filter(function (entry) {
+          return !cloudWords.has(entry.word.toLocaleLowerCase());
+        });
+        const duplicateCount = localEntries.length - importable.length;
+        elements.localImportSummary.textContent =
+          localEntries.length + " local word" + (localEntries.length === 1 ? "" : "s") +
+          "; " + importable.length + " can be imported, " + duplicateCount +
+          " already exist in the cloud. Your browser copy will not be deleted.";
+        elements.importLocalButton.textContent =
+          "Import " + importable.length + " local word" + (importable.length === 1 ? "" : "s");
+        elements.importLocalButton.disabled = importable.length === 0 || Boolean(cloudCacheRecovery);
+        elements.localImportPanel.hidden = localEntries.length === 0;
+      } catch (error) {
+        console.error("Could not inspect local vocabulary for import:", error);
+        elements.localImportSummary.textContent = "Local vocabulary could not be read; nothing has been imported.";
+        elements.importLocalButton.disabled = true;
+        elements.localImportPanel.hidden = false;
+      }
+    }
+
+    async function importLocalVocabularyToCloud() {
+      if (!cloudUserId || !cloudReady || cloudCacheRecovery) {
+        return;
+      }
+      const userId = cloudUserId;
+      elements.importLocalButton.disabled = true;
+      elements.logoutButton.disabled = true;
+      setSyncStatus("Importing local words…", false);
+      let importedCount = 0;
+      let duplicateCount = 0;
+      try {
+        const localEntries = loadVocabulary();
+        for (let index = 0; index < localEntries.length; index += 1) {
+          const entry = localEntries[index];
+          const duplicate = Array.from(cloudRowsByFsrsId.values()).some(function (record) {
+            return record.entry.word.toLocaleLowerCase() === entry.word.toLocaleLowerCase();
+          });
+          if (duplicate) {
+            duplicateCount += 1;
+            continue;
+          }
+
+          const insert = await supabaseClient
+            .from("vocabulary")
+            .insert(cloudEntryPayload(entry, true))
+            .select(CLOUD_ROW_COLUMNS)
+            .single();
+          if (cloudUserId !== userId) {
+            return;
+          }
+          if (insert.error) {
+            if (insert.error.code === "23505") {
+              duplicateCount += 1;
+              const rows = await fetchCloudRows(userId);
+              if (cloudUserId !== userId) {
+                return;
+              }
+              setCloudRows(rows);
+              continue;
+            }
+            throw insert.error;
+          }
+
+          const imported = cloudRowToEntry(insert.data);
+          if (!vocabulary.some(function (saved) {
+            return saved.word.toLocaleLowerCase() === imported.word.toLocaleLowerCase();
+          })) {
+            vocabulary.push(imported);
+          }
+          saveCloudRowBaseline(imported.fsrsId, insert.data);
+          importedCount += 1;
+          if (!saveUserVocabularyCache()) {
+            throw new Error("The cloud import succeeded, but its local cache could not be saved.");
+          }
+          vocabularySnapshot = cloneData(vocabulary);
+          if (!saveCloudSyncMeta(cloudUserId)) {
+            throw new Error("The cloud import succeeded, but sync metadata could not be saved locally.");
+          }
+        }
+
+        renderVocabulary();
+        renderReview();
+        setSyncStatus(
+          "Imported " + importedCount + " word" + (importedCount === 1 ? "" : "s") +
+            "; skipped " + duplicateCount + " duplicate" + (duplicateCount === 1 ? "" : "s") + ".",
+          false
+        );
+      } catch (error) {
+        console.error("Local vocabulary import failed:", error);
+        setSyncStatus(
+          "Import stopped after " + importedCount + " successful word" +
+            (importedCount === 1 ? "" : "s") + ": " + error.message,
+          true
+        );
+      } finally {
+        elements.logoutButton.disabled = syncInProgress;
+        if (cloudUserId === userId) {
+          renderVocabulary();
+          renderReview();
+        }
+        updateLocalImportSummary();
+      }
+    }
+
+    function resolveCacheRecoveryWithCloud() {
+      if (!cloudCacheRecovery) {
+        return;
+      }
+      const recovery = cloudCacheRecovery;
+      recovery.entries.forEach(function (difference) {
+        const localIndex = vocabulary.findIndex(function (entry) {
+          return entry.fsrsId === difference.entry.fsrsId ||
+            entry.word.toLocaleLowerCase() === difference.entry.word.toLocaleLowerCase();
+        });
+        if (difference.row) {
+          const cloudEntry = cloudRowToEntry(difference.row);
+          if (localIndex >= 0) {
+            vocabulary[localIndex] = cloudEntry;
+          } else {
+            vocabulary.push(cloudEntry);
+          }
+          saveCloudRowBaseline(cloudEntry.fsrsId, difference.row);
+        } else if (localIndex >= 0) {
+          vocabulary.splice(localIndex, 1);
+        }
+      });
+
+      const cacheSaved = saveUserVocabularyCache();
+      const metadataSaved = saveCloudSyncMeta(cloudUserId);
+      if (!cacheSaved || !metadataSaved) {
+        showCloudCacheRecovery();
+        setSyncStatus("Could not save the selected cloud version locally; no cloud writes were sent.", true);
+        return;
+      }
+      cloudCacheRecovery = null;
+      elements.syncConflictPanel.hidden = true;
+      vocabularySnapshot = cloneData(vocabulary);
+      renderVocabulary();
+      renderReview();
+      updateLocalImportSummary();
+      setSyncStatus("Using cloud versions for the unsynced local differences.", false);
+      queueCloudSync();
+    }
+
+    function resolveCacheRecoveryWithLocal() {
+      if (!cloudCacheRecovery) {
+        return;
+      }
+      const recovery = cloudCacheRecovery;
+      recovery.entries.forEach(function (difference) {
+        const currentEntry = vocabulary.find(function (entry) {
+          return entry.fsrsId === difference.entry.fsrsId;
+        }) || difference.entry;
+        const remoteEntry = difference.row ? cloudRowToEntry(difference.row) : null;
+        if (remoteEntry && remoteEntry.fsrsId !== currentEntry.fsrsId) {
+          delete syncMeta.rows[remoteEntry.fsrsId];
+          cloudRowsByFsrsId.delete(remoteEntry.fsrsId);
+        }
+        syncMeta.pending[currentEntry.fsrsId] = {
+          type: "upsert",
+          id: difference.row ? difference.row.id : null,
+          baseUpdatedAt: difference.row ? difference.row.updated_at : null,
+          baselineFingerprint: remoteEntry ? entryFingerprint(remoteEntry) : null,
+          entry: cloneData(currentEntry)
+        };
+        if (remoteEntry) {
+          syncMeta.rows[currentEntry.fsrsId] = cloudRowMetadata(difference.row);
+        }
+      });
+
+      const cacheSaved = saveUserVocabularyCache();
+      const metadataSaved = saveCloudSyncMeta(cloudUserId);
+      if (!cacheSaved || !metadataSaved) {
+        showCloudCacheRecovery();
+        setSyncStatus("Could not save the selected local changes; no cloud writes were sent.", true);
+        return;
+      }
+      cloudCacheRecovery = null;
+      elements.syncConflictPanel.hidden = true;
+      vocabularySnapshot = cloneData(vocabulary);
+      renderVocabulary();
+      renderReview();
+      updateLocalImportSummary();
+      setSyncStatus("Keeping local changes; cloud-only words will be preserved.", false);
+      queueCloudSync();
+    }
+
+    function resolveCloudConflictWithCloud() {
+      if (cloudCacheRecovery) {
+        resolveCacheRecoveryWithCloud();
+        return;
+      }
+      if (!cloudConflict) {
+        return;
+      }
+      const conflict = cloudConflict;
+      const row = conflict.row;
+      const localIndex = vocabulary.findIndex(function (entry) {
+        return entry.fsrsId === conflict.fsrsId ||
+          (conflict.pending.entry &&
+            entry.word.toLocaleLowerCase() === conflict.pending.entry.word.toLocaleLowerCase());
+      });
+      delete syncMeta.pending[conflict.fsrsId];
+      delete syncMeta.rows[conflict.fsrsId];
+      if (row) {
+        const cloudEntry = cloudRowToEntry(row);
+        if (localIndex >= 0) {
+          vocabulary[localIndex] = cloudEntry;
+        } else {
+          vocabulary.push(cloudEntry);
+        }
+        saveCloudRowBaseline(cloudEntry.fsrsId, row);
+      } else if (localIndex >= 0) {
+        vocabulary.splice(localIndex, 1);
+      }
+      cloudConflict = null;
+      elements.syncConflictPanel.hidden = true;
+      const cacheSaved = saveUserVocabularyCache();
+      vocabularySnapshot = cloneData(vocabulary);
+      const metadataSaved = saveCloudSyncMeta(cloudUserId);
+      renderVocabulary();
+      renderReview();
+      if (cacheSaved && metadataSaved) {
+        setSyncStatus("Using the cloud version.", false);
+        queueCloudSync();
+      } else {
+        setSyncStatus("Using the cloud version in this session, but local sync state could not be saved.", true);
+      }
+    }
+
+    function resolveCloudConflictWithLocal() {
+      if (cloudCacheRecovery) {
+        resolveCacheRecoveryWithLocal();
+        return;
+      }
+      if (!cloudConflict) {
+        return;
+      }
+      const conflict = cloudConflict;
+      const pending = syncMeta.pending[conflict.fsrsId];
+      const row = conflict.row;
+      if (!pending) {
+        cloudConflict = null;
+        elements.syncConflictPanel.hidden = true;
+        return;
+      }
+      if (pending.type === "delete" && !row) {
+        delete syncMeta.pending[conflict.fsrsId];
+        delete syncMeta.rows[conflict.fsrsId];
+      } else if (row) {
+        const remoteEntry = cloudRowToEntry(row);
+        if (remoteEntry.fsrsId !== conflict.fsrsId) {
+          delete syncMeta.rows[remoteEntry.fsrsId];
+          cloudRowsByFsrsId.delete(remoteEntry.fsrsId);
+        }
+        pending.id = row.id;
+        pending.baseUpdatedAt = row.updated_at;
+        pending.baselineFingerprint = entryFingerprint(remoteEntry);
+        syncMeta.rows[conflict.fsrsId] = cloudRowMetadata(row);
+      } else {
+        pending.id = null;
+        pending.baseUpdatedAt = null;
+        pending.baselineFingerprint = null;
+      }
+      cloudConflict = null;
+      elements.syncConflictPanel.hidden = true;
+      if (saveCloudSyncMeta(cloudUserId)) {
+        setSyncStatus("Keeping this device’s version and retrying sync…", false);
+        queueCloudSync();
+      } else {
+        setSyncStatus("The local version is unchanged, but sync state could not be saved; no cloud update was sent.", true);
+      }
+    }
+
+    function reconcileCloudRows(rows, cachedEntries) {
+      const remoteMap = mapCloudRows(rows);
+      cloudRowsByFsrsId = remoteMap;
+      const recoveryEntries = findUntrackedCacheDifferences(
+        cachedEntries,
+        remoteMap,
+        syncMeta.pending
+      );
+      cloudCacheRecovery = recoveryEntries.length > 0
+        ? { entries: recoveryEntries }
+        : null;
+      const pendingIds = Object.keys(syncMeta.pending);
+      const hasPending = pendingIds.length > 0;
+      const cachedById = new Map((cachedEntries || []).map(function (entry) {
+        return [entry.fsrsId, entry];
+      }));
+      const merged = new Map();
+      remoteMap.forEach(function (record, remoteFsrsId) {
+        let pendingFsrsId = remoteFsrsId;
+        let pending = syncMeta.pending[pendingFsrsId];
+        if (!pending) {
+          pendingFsrsId = pendingIds.find(function (fsrsId) {
+            const candidate = syncMeta.pending[fsrsId];
+            return candidate.id && String(candidate.id) === String(record.row.id);
+          }) || remoteFsrsId;
+          pending = syncMeta.pending[pendingFsrsId];
+        }
+        if (pending && pending.type === "delete") {
+          return;
+        }
+        if (pending && pending.type === "upsert") {
+          if (pendingFsrsId !== remoteFsrsId) {
+            merged.delete(remoteFsrsId);
+          }
+          merged.set(
+            pendingFsrsId,
+            normalizeSavedEntry(pending.entry || cachedById.get(pendingFsrsId))
+          );
+        } else {
+          merged.set(remoteFsrsId, record.entry);
+        }
+      });
+      pendingIds.forEach(function (fsrsId) {
+        const pending = syncMeta.pending[fsrsId];
+        if (pending.type === "delete") {
+          merged.delete(fsrsId);
+        } else if (pending.entry || cachedById.has(fsrsId)) {
+          merged.set(fsrsId, normalizeSavedEntry(pending.entry || cachedById.get(fsrsId)));
+        }
+      });
+      recoveryEntries.forEach(function (difference) {
+        if (difference.row) {
+          const remoteEntry = cloudRowToEntry(difference.row);
+          if (remoteEntry.fsrsId !== difference.entry.fsrsId) {
+            merged.delete(remoteEntry.fsrsId);
+          }
+        }
+        merged.set(difference.entry.fsrsId, difference.entry);
+      });
+      vocabulary = Array.from(merged.values()).filter(Boolean);
+
+      const nextRows = {};
+      remoteMap.forEach(function (record, fsrsId) {
+        nextRows[fsrsId] = syncMeta.pending[fsrsId] && syncMeta.rows[fsrsId]
+          ? syncMeta.rows[fsrsId]
+          : cloudRowMetadata(record.row);
+      });
+      Object.keys(syncMeta.pending).forEach(function (fsrsId) {
+        if (syncMeta.rows[fsrsId] && !nextRows[fsrsId]) {
+          nextRows[fsrsId] = syncMeta.rows[fsrsId];
+        }
+      });
+      syncMeta.rows = nextRows;
+      vocabularySnapshot = cloneData(vocabulary);
+      const cacheSaved = saveUserVocabularyCache();
+      const metadataSaved = saveCloudSyncMeta(cloudUserId);
+      renderVocabulary();
+      renderReview();
+      updateLocalImportSummary();
+      if (cloudCacheRecovery) {
+        showCloudCacheRecovery();
+        if (!cacheSaved || !metadataSaved) {
+          setSyncStatus("Sync is paused, but the local cache or recovery state could not be saved.", true);
+        }
+      } else if (hasPending && metadataSaved) {
+        queueCloudSync();
+      } else if (hasPending) {
+        setSyncStatus("Cloud data loaded, but pending sync details could not be saved locally.", true);
+      } else if (!cacheSaved || !metadataSaved) {
+        setSyncStatus("Cloud data loaded, but the local cache or sync metadata could not be saved.", true);
+      } else {
+        setSyncStatus("Synced", false);
+      }
+    }
+
+    function setAuthView(user) {
+      const isSignedIn = Boolean(user);
+      elements.authSignedOut.hidden = isSignedIn;
+      elements.authSignedIn.hidden = !isSignedIn;
+      elements.authUserEmail.textContent = isSignedIn ? (user.email || "Signed in") : "";
+      if (!isSignedIn) {
+        elements.localImportPanel.hidden = true;
+        elements.syncConflictPanel.hidden = true;
+      }
+    }
+
+    function setAuthFormBusy(isBusy) {
+      elements.loginButton.disabled = isBusy;
+      elements.signupButton.disabled = isBusy;
+      elements.authEmail.disabled = isBusy;
+      elements.authPassword.disabled = isBusy;
+    }
+
+    function authRedirectUrl() {
+      if (window.location.protocol === "http:" || window.location.protocol === "https:") {
+        return window.location.href.split(/[?#]/)[0];
+      }
+      return GITHUB_PAGES_URL;
+    }
+
+    function handleAuthSession(session) {
+      authSession = session;
+      if (session && session.user) {
+        setAuthView(session.user);
+        if (cloudReady && cloudUserId === session.user.id) {
+          return;
+        }
+        if (authLoadingUserId === session.user.id) {
+          return;
+        }
+        const loadToken = ++authLoadToken;
+        activateCloudUser(session.user, loadToken);
+      } else {
+        setAuthView(null);
+        if (cloudUserId) {
+          deactivateCloudUser();
+        }
+      }
+    }
+
+    async function activateCloudUser(user, loadToken) {
+      const userId = user.id;
+      authLoadingUserId = userId;
+      cloudUserId = userId;
+      cloudReady = false;
+      cloudConflict = null;
+      cloudCacheRecovery = null;
+      syncMeta = { rows: {}, pending: {} };
+      elements.syncConflictPanel.hidden = true;
+      elements.localImportPanel.hidden = true;
+      vocabulary = [];
+      vocabularySnapshot = [];
+      cloudRowsByFsrsId = new Map();
+      renderVocabulary();
+      renderReview();
+      let cachedEntries = null;
+      let cacheReadFailed = false;
+      setAuthView(user);
+      setSyncStatus("Loading your cloud vocabulary…", false);
+      translationCache = loadStoredObject(currentTranslationCacheKey());
+      cefrOverrides = loadCefrOverrides(currentCefrOverridesKey());
+      try {
+        cachedEntries = loadUserVocabularyCache(userId);
+        syncMeta = loadCloudSyncMeta(userId);
+        const rows = await fetchCloudRows(userId);
+        if (loadToken !== authLoadToken || cloudUserId !== userId) {
+          return;
+        }
+        cloudReady = true;
+        reconcileCloudRows(rows, cachedEntries);
+      } catch (error) {
+        console.error("Could not load cloud vocabulary:", error);
+        if (loadToken !== authLoadToken || cloudUserId !== userId) {
+          return;
+        }
+        try {
+          if (cachedEntries === null) {
+            cachedEntries = loadUserVocabularyCache(userId);
+          }
+          vocabulary = cachedEntries || [];
+        } catch (cacheError) {
+          console.error("Could not load local cloud cache:", cacheError);
+          cacheReadFailed = true;
+          vocabulary = [];
+        }
+        vocabularySnapshot = cloneData(vocabulary);
+        if (!cacheReadFailed) {
+          saveUserVocabularyCache();
+        }
+        renderVocabulary();
+        renderReview();
+        const errorMessage = error && (error.code === "42703" || error.code === "PGRST204")
+          ? "The public.vocabulary table is missing or has not exposed a required column, including updated_at."
+          : "Could not load cloud words: " + error.message;
+        setSyncStatus(errorMessage + " Your local cache is unchanged.", true);
+      } finally {
+        if (authLoadingUserId === userId) {
+          authLoadingUserId = "";
+        }
+      }
+    }
+
+    function deactivateCloudUser() {
+      cloudReady = false;
+      cloudUserId = "";
+      cloudConflict = null;
+      cloudCacheRecovery = null;
+      syncMeta = { rows: {}, pending: {} };
+      cloudRowsByFsrsId = new Map();
+      vocabulary = loadVocabulary();
+      vocabularySnapshot = cloneData(vocabulary);
+      translationCache = loadStoredObject(TRANSLATION_CACHE_KEY);
+      cefrOverrides = loadCefrOverrides(CEFR_OVERRIDES_KEY);
+      elements.syncConflictPanel.hidden = true;
+      elements.localImportPanel.hidden = true;
+      elements.syncStatus.textContent = "";
+      elements.syncStatus.className = "sync-status";
+      renderVocabulary();
+      renderReview();
+    }
+
+    async function refreshCloudFromServer() {
+      const userId = cloudUserId;
+      if (!userId || !cloudReady || cloudConflict || cloudCacheRecovery) {
+        return;
+      }
+      try {
+        const rows = await fetchCloudRows(userId);
+        if (cloudUserId !== userId) {
+          return;
+        }
+        reconcileCloudRows(rows, vocabulary);
+      } catch (error) {
+        console.error("Could not refresh cloud vocabulary:", error);
+        if (cloudUserId === userId) {
+          setSyncStatus("Could not refresh cloud words: " + error.message, true);
+        }
+      }
+    }
+
+    async function performAuthAction(action) {
+      if (!supabaseClient) {
+        setMessage(elements.authMessage, "Supabase could not load. Check your internet connection and reload.", "error");
+        return;
+      }
+      if (!elements.authForm.reportValidity()) {
+        return;
+      }
+      const email = elements.authEmail.value.trim();
+      const password = elements.authPassword.value;
+      setAuthFormBusy(true);
+      setMessage(elements.authMessage, action === "signup" ? "Creating your account…" : "Logging in…");
+      try {
+        if (action === "signup") {
+          const result = await supabaseClient.auth.signUp({
+            email: email,
+            password: password,
+            options: { emailRedirectTo: authRedirectUrl() }
+          });
+          if (result.error) {
+            throw result.error;
+          }
+          setMessage(
+            elements.authMessage,
+            result.data.session
+              ? "Account created and logged in."
+              : "Account created. Check your email to confirm, then log in.",
+            "success"
+          );
+        } else {
+          const result = await supabaseClient.auth.signInWithPassword({
+            email: email,
+            password: password
+          });
+          if (result.error) {
+            throw result.error;
+          }
+          setMessage(elements.authMessage, "Logged in.", "success");
+        }
+      } catch (error) {
+        console.error("Supabase authentication failed:", error);
+        setMessage(elements.authMessage, error.message || "Authentication failed.", "error");
+      } finally {
+        setAuthFormBusy(false);
+      }
+    }
+
+    function initializeSupabaseAuth() {
+      if (!supabaseClient) {
+        setMessage(elements.authMessage, "Supabase client did not load. Local vocabulary is still available.", "error");
+        return;
+      }
+      elements.authForm.addEventListener("submit", function (event) {
+        event.preventDefault();
+        performAuthAction("login");
+      });
+      elements.loginButton.addEventListener("click", function () {
+        performAuthAction("login");
+      });
+      elements.signupButton.addEventListener("click", function () {
+        performAuthAction("signup");
+      });
+      elements.logoutButton.addEventListener("click", async function () {
+        elements.logoutButton.disabled = true;
+        try {
+          const result = await supabaseClient.auth.signOut();
+          if (result.error) {
+            throw result.error;
+          }
+        } catch (error) {
+          console.error("Supabase logout failed:", error);
+          setSyncStatus("Could not log out: " + error.message, true);
+        } finally {
+          elements.logoutButton.disabled = false;
+        }
+      });
+      elements.importLocalButton.addEventListener("click", importLocalVocabularyToCloud);
+      elements.useCloudButton.addEventListener("click", resolveCloudConflictWithCloud);
+      elements.keepLocalButton.addEventListener("click", resolveCloudConflictWithLocal);
+
+      supabaseClient.auth.onAuthStateChange(function (_event, session) {
+        window.setTimeout(function () {
+          handleAuthSession(session);
+        }, 0);
+      });
+      supabaseClient.auth.getSession().then(function (result) {
+        if (result.error) {
+          console.error("Could not restore Supabase session:", result.error);
+          setMessage(elements.authMessage, "Could not restore your login: " + result.error.message, "error");
+          return;
+        }
+        handleAuthSession(result.data.session);
+      }).catch(function (error) {
+        console.error("Could not restore Supabase session:", error);
+        setMessage(elements.authMessage, "Could not restore your login: " + error.message, "error");
+      });
+
+      window.addEventListener("focus", function () {
+        if (cloudReady && Date.now() - lastCloudRefresh > 5000) {
+          lastCloudRefresh = Date.now();
+          refreshCloudFromServer();
+        }
+      });
+      window.addEventListener("online", function () {
+        if (cloudReady) {
+          lastCloudRefresh = Date.now();
+          refreshCloudFromServer();
+          queueCloudSync();
+        }
+      });
     }
 
     function setMessage(element, text, kind) {
@@ -1653,7 +3324,7 @@
         cefrOverrides[key] = { level: entry.cefrLevel, source: "manual" };
       }
 
-      if (!saveStoredObject(CEFR_OVERRIDES_KEY, cefrOverrides, elements.dictionaryMessage)) {
+      if (!saveStoredObject(currentCefrOverridesKey(), cefrOverrides, elements.dictionaryMessage)) {
         cefrOverrides = previousOverrides;
         entry.cefrLevel = previousLevel;
         entry.cefrSource = previousSource;
@@ -1674,7 +3345,7 @@
           entry.cefrLevel = previousLevel;
           entry.cefrSource = previousSource;
           cefrOverrides = previousOverrides;
-          saveStoredObject(CEFR_OVERRIDES_KEY, cefrOverrides, elements.dictionaryMessage);
+          saveStoredObject(currentCefrOverridesKey(), cefrOverrides, elements.dictionaryMessage);
         }
       }
     }
@@ -1802,11 +3473,13 @@
             pronounceEntry(entry);
           }));
         }
-        if (entry.reviewStatus === "mastered") {
-          actions.appendChild(createButton("Mark Unknown", "secondary-button", function () {
-            recordFsrsReview("Unknown", entry);
-          }));
-        }
+        actions.appendChild(createButton(
+          entry.reviewStatus === "mastered" ? "Mark Unknown" : "Mark Known",
+          "secondary-button",
+          function () {
+            setVocabularyKnown(entry, entry.reviewStatus !== "mastered");
+          }
+        ));
         actions.appendChild(createButton("Delete", "danger-button", function () {
           deleteWord(entry.word);
         }));
@@ -1837,6 +3510,41 @@
         renderSavedWordEditor(card, entry);
         elements.vocabularyList.appendChild(card);
       });
+    }
+
+    function setVocabularyKnown(entry, isKnown) {
+      const nextStatus = isKnown ? "mastered" : "active";
+      if (entry.reviewStatus === nextStatus) {
+        return;
+      }
+
+      const previous = JSON.parse(JSON.stringify(entry));
+      const now = new Date().toISOString();
+      entry.reviewStatus = nextStatus;
+      entry.masteredAt = isKnown ? now : "";
+      entry.dueAt = isKnown ? "" : now;
+      if (!isKnown && entry.fsrsCard) {
+        entry.fsrsCard.dueAt = now;
+      }
+
+      if (!saveVocabulary()) {
+        Object.assign(entry, previous);
+        renderVocabulary();
+        renderReview();
+        return;
+      }
+
+      if (isKnown && activeReviewWord === entry.fsrsId) {
+        activeReviewWord = "";
+        answerRevealed = false;
+      }
+      setMessage(
+        elements.vocabularyMessage,
+        isKnown ? "Marked Known and removed from reviews." : "Marked Unknown and due for review today.",
+        "success"
+      );
+      renderVocabulary();
+      renderReview();
     }
 
     function renderSavedWordEditor(card, entry) {
@@ -1952,7 +3660,7 @@
           cefrOverrides[entry.word.toLowerCase()] = { level: entry.cefrLevel, source: "manual" };
         }
 
-        if (!saveStoredObject(CEFR_OVERRIDES_KEY, cefrOverrides, elements.vocabularyMessage)) {
+        if (!saveStoredObject(currentCefrOverridesKey(), cefrOverrides, elements.vocabularyMessage)) {
           Object.assign(entry, previous);
           cefrOverrides = previousOverrides;
           return;
@@ -1960,7 +3668,7 @@
         if (!saveVocabulary()) {
           Object.assign(entry, previous);
           cefrOverrides = previousOverrides;
-          saveStoredObject(CEFR_OVERRIDES_KEY, cefrOverrides, elements.vocabularyMessage);
+          saveStoredObject(currentCefrOverridesKey(), cefrOverrides, elements.vocabularyMessage);
           return;
         }
 
@@ -2378,24 +4086,17 @@
       });
     }
 
-    async function recordFsrsReview(outcome, selectedEntry) {
-      const entry = selectedEntry || vocabulary.find(function (item) {
+    async function recordFsrsReview(outcome) {
+      const entry = vocabulary.find(function (item) {
         return item.fsrsId === activeReviewWord;
       });
-      const isManualReactivation = Boolean(selectedEntry);
-      if (!entry || reviewSubmitting ||
-          (isManualReactivation ? entry.reviewStatus !== "mastered" : !answerRevealed)) {
+      if (!entry || reviewSubmitting || !answerRevealed) {
         return;
       }
 
       reviewSubmitting = true;
-      const messageElement = isManualReactivation
-        ? elements.vocabularyMessage
-        : elements.reviewMessage;
-      setMessage(messageElement, isManualReactivation ? "Adding to review…" : "Scheduling with FSRS…");
-      if (!isManualReactivation) {
-        renderReview();
-      }
+      setMessage(elements.reviewMessage, "Scheduling with FSRS…");
+      renderReview();
       try {
         const fsrs = await getFsrsScheduler();
         const now = new Date();
@@ -2412,7 +4113,7 @@
           reviewedAt: now.toISOString(),
           rating: outcome,
           fsrsRating: fsrsRating,
-          action: isManualReactivation ? "manual-reactivation" : "review",
+          action: "review",
           ratingValue: grade,
           dueBefore: new Date(card.dueAt).toISOString(),
           dueAfter: serializedCard.dueAt,
@@ -2438,21 +4139,19 @@
 
         if (!saveVocabulary()) {
           Object.assign(entry, previous);
-          setMessage(messageElement, "The review could not be saved in localStorage.", "error");
+          setMessage(elements.reviewMessage, "The review could not be saved in localStorage.", "error");
           return;
         }
 
-        if (!isManualReactivation) {
-          activeReviewWord = "";
-          answerRevealed = false;
-        }
-        setMessage(messageElement, outcome === "Known"
+        activeReviewWord = "";
+        answerRevealed = false;
+        setMessage(elements.reviewMessage, outcome === "Known"
           ? "Marked Known. Removed from review."
           : "Marked Unknown. Next review: " + formatDueDate(serializedCard.dueAt) + ".", "success");
       } catch (error) {
         console.error("FSRS review failed:", error);
         setMessage(
-          messageElement,
+          elements.reviewMessage,
           fsrsLoadError
             ? "Could not load the FSRS library. Check your connection; no alternative schedule was used."
             : "Could not schedule this review with FSRS: " + error.message,
@@ -2461,13 +4160,11 @@
       } finally {
         reviewSubmitting = false;
         renderReview();
-        if (isManualReactivation) {
-          renderVocabulary();
-        }
       }
     }
 
     renderVocabulary();
+    initializeSupabaseAuth();
   </script>
 </body>
 </html>
