@@ -256,10 +256,17 @@
       flex-wrap: wrap;
     }
 
+    .word-title {
+      display: flex;
+      min-width: 0;
+      align-items: center;
+      gap: 9px;
+    }
+
     .result-heading h3,
     .word-heading h3 {
       margin: 0;
-      font-size: 1.35rem;
+      font-size: clamp(1.4rem, 5vw, 1.7rem);
       overflow-wrap: anywhere;
     }
 
@@ -342,9 +349,10 @@
     }
 
     .example {
-      margin: 7px 0 0 14px;
+      margin: 8px 0 0;
       color: #68748a;
-      line-height: 1.55;
+      font-size: 0.95rem;
+      line-height: 1.45;
     }
 
     .word-list {
@@ -574,21 +582,16 @@
       gap: 12px;
     }
 
-    .review-speaker-button {
+    .speaker-button {
       display: grid;
-      width: 44px;
-      min-width: 44px;
-      height: 44px;
+      flex: 0 0 42px;
+      width: 42px;
+      min-width: 42px;
+      height: 42px;
       padding: 0;
       place-items: center;
       border-radius: 50%;
-      color: #3445bd;
-      background: #eef0ff;
       font-size: 1.2rem;
-    }
-
-    .review-speaker-button:hover:not(:disabled) {
-      background: #e0e4ff;
     }
 
     .review-details {
@@ -1864,12 +1867,32 @@
     }
 
     function primaryChineseMeaning(value) {
-      const meaning = typeof value === "string" ? value.trim() : "";
+      const meaning = decodeDisplayText(value)
+        .replace(/^\s*(?:chinese meaning|translation|translated by mymemory|mymemory|machine translation|translation source)\s*[:：]\s*/i, "")
+        .replace(/\s*[-–—]?[\[(（]?\s*(?:translated by mymemory|machine translation|machine translated|translation source|mymemory)\s*[\])）]?\s*$/i, "")
+        .trim();
       if (!meaning) {
         return "";
       }
-      const primary = meaning.split(/[；;]/, 1)[0].trim();
-      return primary || meaning;
+      const primary = meaning.split(/[；;，,。/|\r\n]/, 1)[0].trim();
+      const compactLength = Array.from(primary.replace(/\s/g, "")).length;
+      if (!primary || !/[\u3400-\u9fff]/.test(primary) ||
+          /[\u00c0-\u00ff�]/.test(primary) || compactLength > 18) {
+        return "";
+      }
+      return primary;
+    }
+
+    function decodeDisplayText(value) {
+      if (typeof value !== "string") {
+        return "";
+      }
+      const decoder = document.createElement("textarea");
+      decoder.innerHTML = value;
+      return decoder.value
+        .replace(/<\/?[a-z][^>]*>/gi, "")
+        .replace(/\s+/g, " ")
+        .trim();
     }
 
     function cachedTranslation(key) {
@@ -3513,7 +3536,11 @@
 
       const heading = document.createElement("div");
       heading.className = "result-heading";
-      addText(heading, "h3", entry.word);
+      const wordTitle = document.createElement("div");
+      wordTitle.className = "word-title";
+      addText(wordTitle, "h3", entry.word);
+      wordTitle.appendChild(createPronunciationButton(entry, elements.dictionaryMessage));
+      heading.appendChild(wordTitle);
       const alreadySaved = Boolean(findVocabularyEntry(entry.word));
       const waitingForCloud = Boolean(cloudUserId && !cloudReady);
       const addButton = createButton(
@@ -3527,45 +3554,76 @@
       heading.appendChild(addButton);
       card.appendChild(heading);
 
-      renderPronunciation(card, entry);
       renderEntryTranslation(card, entry);
       renderCefrControl(card, entry, function () {
         renderDictionaryResult(entry);
       });
-
-      entry.definitions.forEach(function (definition) {
-        const group = document.createElement("div");
-        group.className = "meaning-group";
-        if (definition.partOfSpeech) {
-          addText(group, "p", "Part of speech: " + definition.partOfSpeech, "part-of-speech");
-        }
-        if (definition.example) {
-          addText(group, "p", "“" + definition.example + "”", "example");
-        }
-        card.appendChild(group);
-      });
+      renderEntryExample(card, entry);
 
       elements.dictionaryResults.replaceChildren(card);
     }
 
-    function renderTranslation(parent, value) {
-      const meaning = primaryChineseMeaning(value);
-      if (meaning) {
-        addText(parent, "p", meaning, "translation-value");
+    function renderEntryTranslation(parent, entry) {
+      const definitions = Array.isArray(entry.definitions) ? entry.definitions : [];
+      const translations = [entry.translationZh].concat(
+        definitions.map(function (definition) {
+          return definition.translationZh;
+        })
+      );
+      for (let index = 0; index < translations.length; index += 1) {
+        const meaning = primaryChineseMeaning(translations[index]);
+        if (meaning) {
+          addText(parent, "p", meaning, "translation-value");
+          return;
+        }
       }
     }
 
-    function renderEntryTranslation(parent, entry) {
-      const definition = entry.definitions.find(function (item) {
-        return Boolean(item.translationZh);
+    function displayExample(entry) {
+      const definitions = Array.isArray(entry.definitions) ? entry.definitions : [];
+      const definitionTexts = definitions.map(function (definition) {
+        return normalizeDisplayExample(definition.definition);
       });
-      renderTranslation(parent, entry.translationZh || (definition && definition.translationZh) || "");
+      const candidates = definitions.map(function (definition) {
+        return definition.example;
+      }).concat(Array.isArray(entry.examples) ? entry.examples : []);
+      const seen = new Set();
+
+      for (let index = 0; index < candidates.length; index += 1) {
+        const example = decodeDisplayText(candidates[index]);
+        const normalized = normalizeDisplayExample(example);
+        const wordCount = (example.match(/[A-Za-z]+/g) || []).length;
+        if (!example || example.length > 200 || /[\u00c0-\u00ff�]/.test(example) ||
+            wordCount < 2 || definitionTexts.includes(normalized) || seen.has(normalized)) {
+          continue;
+        }
+        seen.add(normalized);
+        return example;
+      }
+      return "";
+    }
+
+    function normalizeDisplayExample(value) {
+      return decodeDisplayText(value)
+        .toLowerCase()
+        .replace(/[“”‘’"'.,!?;:]+/g, "")
+        .replace(/\s+/g, " ")
+        .trim();
+    }
+
+    function renderEntryExample(parent, entry) {
+      const example = displayExample(entry);
+      if (example) {
+        addText(parent, "p", example, "example");
+      }
     }
 
     function renderCefrControl(parent, entry, onChange) {
       const controls = document.createElement("div");
       controls.className = "cefr-controls";
-      addText(controls, "span", "CEFR: " + cefrLabel(entry), "cefr-badge " + cefrClass(entry.cefrLevel));
+      if (entry.cefrLevel) {
+        addText(controls, "span", "CEFR: " + cefrLabel(entry), "cefr-badge " + cefrClass(entry.cefrLevel));
+      }
 
       const select = document.createElement("select");
       select.setAttribute("aria-label", "Edit CEFR level for " + entry.word);
@@ -3647,27 +3705,16 @@
       }) || null;
     }
 
-    function renderPronunciation(parent, entry) {
-      let button = null;
-      if (entry.audioUrl) {
-        button = createButton("🔊 Play British pronunciation", "secondary-button", function () {
-          const audio = new Audio(entry.audioUrl);
-          audio.play().catch(function (error) {
-            console.error("British audio playback failed:", error);
-            setMessage(elements.dictionaryMessage, "Could not play the British audio. Try again or check your connection.", "error");
-          });
+    function createPronunciationButton(entry, messageElement) {
+      const button = createButton("🔊", "secondary-button speaker-button", function () {
+        setMessage(messageElement, "");
+        pronounceEntry(entry, function (message) {
+          setMessage(messageElement, message, "error");
         });
-      } else if (britishVoice()) {
-        button = createButton("🔊 Play British pronunciation", "secondary-button", function () {
-          speakWithBritishVoice(entry.word);
-        });
-      }
-      if (button) {
-        const pronunciation = document.createElement("p");
-        pronunciation.className = "meta";
-        pronunciation.appendChild(button);
-        parent.appendChild(pronunciation);
-      }
+      });
+      button.setAttribute("aria-label", "Play British English pronunciation for " + entry.word);
+      button.title = "Play British English pronunciation";
+      return button;
     }
 
     function speakWithBritishVoice(word, reportError) {
@@ -3769,14 +3816,13 @@
         card.className = "word-card";
         const heading = document.createElement("div");
         heading.className = "word-heading";
-        addText(heading, "h3", entry.word);
+        const wordTitle = document.createElement("div");
+        wordTitle.className = "word-title";
+        addText(wordTitle, "h3", entry.word);
+        wordTitle.appendChild(createPronunciationButton(entry, elements.vocabularyMessage));
+        heading.appendChild(wordTitle);
         const actions = document.createElement("div");
         actions.className = "word-card-actions";
-        if (entry.audioUrl || britishVoice()) {
-          actions.appendChild(createButton("🔊 Pronounce", "secondary-button", function () {
-            pronounceEntry(entry);
-          }));
-        }
         actions.appendChild(createButton(
           entry.reviewStatus === "mastered" ? "Mark Unknown" : "Mark Known",
           "secondary-button",
@@ -3789,27 +3835,10 @@
         }));
         heading.appendChild(actions);
         card.appendChild(heading);
-        if (entry.reviewStatus === "mastered") {
-          addText(card, "p", "Mastered", "mastered-status");
-        }
 
-        renderCefrControl(card, entry, renderVocabulary);
-        if (entry.definitions.length > 0) {
-          entry.definitions.forEach(function (definition) {
-            if (definition.partOfSpeech) {
-              addText(card, "p", "Part of speech: " + definition.partOfSpeech, "part-of-speech");
-            }
-            if (definition.example) {
-              addText(card, "p", "Example: “" + definition.example + "”");
-            }
-          });
-        } else {
-          entry.examples.forEach(function (example) {
-            addText(card, "p", "Example: “" + example + "”");
-          });
-        }
         renderEntryTranslation(card, entry);
-        addText(card, "p", "Reviews: " + entry.reviews + " · Known: " + entry.known + " · Unknown: " + entry.unknown);
+        renderCefrControl(card, entry, renderVocabulary);
+        renderEntryExample(card, entry);
         renderSavedWordEditor(card, entry);
         elements.vocabularyList.appendChild(card);
       });
@@ -3889,16 +3918,12 @@
         const fieldset = document.createElement("fieldset");
         fieldset.className = "definition-editor";
         addText(fieldset, "legend", "Meaning " + (index + 1));
-        const partInput = document.createElement("input");
-        partInput.value = definition.partOfSpeech;
-        addLabeledControl(fieldset, "Part of speech", partInput);
         const exampleInput = document.createElement("input");
         exampleInput.value = definition.example;
         addLabeledControl(fieldset, "Example sentence", exampleInput);
         form.appendChild(fieldset);
         definitionFields.push({
           entry: definition,
-          partOfSpeech: partInput,
           example: exampleInput
         });
       });
@@ -3933,7 +3958,7 @@
         entry.word = newWord;
         entry.definitions = definitionFields.map(function (fields) {
           return {
-            partOfSpeech: fields.partOfSpeech.value.trim(),
+            partOfSpeech: fields.entry.partOfSpeech,
             definition: fields.entry.definition,
             translationZh: fields.entry.translationZh,
             translationSource: fields.entry.translationSource,
@@ -4333,36 +4358,17 @@
       const wordRow = document.createElement("div");
       wordRow.className = "review-word-row";
       addText(wordRow, "h3", entry.word, "review-word");
-      const pronunciationButton = createButton("🔊", "review-speaker-button", function () {
-        pronounceEntry(entry, function (message) {
-          setMessage(elements.reviewMessage, message, "error");
-        });
-      });
-      pronunciationButton.setAttribute("aria-label", "Play British English pronunciation for " + entry.word);
-      pronunciationButton.title = "Play British English pronunciation";
-      wordRow.appendChild(pronunciationButton);
+      wordRow.appendChild(createPronunciationButton(entry, elements.reviewMessage));
       elements.reviewCard.appendChild(wordRow);
 
       const details = document.createElement("div");
       details.className = "review-details";
       details.hidden = !answerRevealed;
-      if (entry.definitions.length > 0) {
-        entry.definitions.forEach(function (definition) {
-          if (definition.partOfSpeech) {
-            addText(details, "p", "Part of speech: " + definition.partOfSpeech, "part-of-speech");
-          }
-          if (definition.example) {
-            addText(details, "p", "“" + definition.example + "”", "example");
-          }
-        });
-      }
       renderEntryTranslation(details, entry);
-      addText(details, "span", "CEFR: " + cefrLabel(entry), "cefr-badge " + cefrClass(entry.cefrLevel));
-      if (entry.examples.length > 0 && entry.definitions.length === 0) {
-        entry.examples.forEach(function (example) {
-          addText(details, "p", "“" + example + "”", "example");
-        });
+      if (entry.cefrLevel) {
+        addText(details, "span", "CEFR: " + cefrLabel(entry), "cefr-badge " + cefrClass(entry.cefrLevel));
       }
+      renderEntryExample(details, entry);
       elements.reviewCard.appendChild(details);
 
       const revealActions = document.createElement("div");
