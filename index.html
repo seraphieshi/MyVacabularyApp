@@ -297,20 +297,13 @@
       line-height: 1.55;
     }
 
-    .cefr-controls {
-      display: flex;
-      align-items: center;
-      flex-wrap: wrap;
-      gap: 10px;
-      margin: 12px 0;
-    }
-
     .cefr-badge {
       display: inline-block;
-      padding: 4px 10px;
+      margin: 4px 0;
+      padding: 3px 8px;
       border-radius: 999px;
-      font-size: 0.86rem;
-      font-weight: 750;
+      font-size: 0.75rem;
+      font-weight: 650;
     }
 
     .cefr-green {
@@ -336,11 +329,6 @@
     .cefr-neutral {
       color: #59647a;
       background: #edf0f5;
-    }
-
-    .cefr-controls select {
-      padding: 8px 10px;
-      font-size: 0.92rem;
     }
 
     .definition {
@@ -1129,7 +1117,7 @@
       <p class="message" id="dictionaryMessage" role="status" aria-live="polite"></p>
       <div id="dictionaryResults" aria-live="polite"></div>
       <aside class="note">
-        <p><strong>Chinese:</strong> Meanings are retrieved automatically and cached in this browser. Each lookup sends at most four uncached texts; the free service may be rate-limited.</p>
+        <p><strong>Chinese:</strong> Meanings come from the ECDICT English-Chinese dictionary and are cached in this browser.</p>
         <p>British audio is shown when a UK recording is available. A device voice is offered only if labelled English (UK).</p>
       </aside>
     </section>
@@ -1221,13 +1209,10 @@
     const GITHUB_PAGES_URL = "https://seraphieshi.github.io/MyVacabularyApp/";
     const STORAGE_KEY = "myEnglishDictionary.v1";
     const TRANSLATION_CACHE_KEY = "myEnglishDictionary.translations.v1";
-    const CEFR_OVERRIDES_KEY = "myEnglishDictionary.cefrOverrides.v1";
     const CLOUD_CACHE_PREFIX = STORAGE_KEY + ".cloud.";
     const CLOUD_META_PREFIX = STORAGE_KEY + ".sync.";
     const USER_TRANSLATION_CACHE_PREFIX = TRANSLATION_CACHE_KEY + ".user.";
-    const USER_CEFR_OVERRIDES_PREFIX = CEFR_OVERRIDES_KEY + ".user.";
     const CLOUD_ROW_COLUMNS = "id,created_at,updated_at,user_id,word,chinese_meaning,cefr_level,is_known,next_review,review_data,word_data";
-    const MAX_TRANSLATIONS_PER_SEARCH = 4;
     const FSRS_PACKAGE_VERSION = "6.0.0";
     const FSRS_MODEL_VERSION = "FSRS-7";
     const starterWords = [
@@ -1323,7 +1308,6 @@
     let syncMeta = { rows: {}, pending: {} };
     let vocabularySnapshot = [];
     let translationCache = loadStoredObject(TRANSLATION_CACHE_KEY);
-    let cefrOverrides = loadCefrOverrides();
     let vocabulary = loadVocabulary();
     vocabularySnapshot = cloneData(vocabulary);
     try {
@@ -1343,7 +1327,11 @@
     let activeReviewWord = "";
     let answerRevealed = false;
     let todayReviewExpanded = false;
-    const translationFailures = new Set();
+    let translationUnavailableWord = "";
+    let translationRetrying = false;
+    let translationRetryable = false;
+    let translationLookupPending = false;
+    const ecdictShardCache = new Map();
     let fsrsModulePromise = null;
     let fsrsSchedulerInstance = null;
     let fsrsLoadError = null;
@@ -1394,19 +1382,6 @@
       }
     }
 
-    function loadCefrOverrides(storageKey) {
-      const saved = loadStoredObject(storageKey || currentCefrOverridesKey());
-      const overrides = {};
-      Object.keys(saved).forEach(function (key) {
-        const value = saved[key];
-        if (value && typeof value === "object" &&
-            (value.level === "" || /^(A1|A2|B1|B2|C1|C2)$/.test(value.level))) {
-          overrides[key] = { level: value.level, source: "manual" };
-        }
-      });
-      return overrides;
-    }
-
     function saveStoredObject(key, value, messageElement) {
       try {
         localStorage.setItem(key, JSON.stringify(value));
@@ -1451,12 +1426,6 @@
       return cloudUserId
         ? USER_TRANSLATION_CACHE_PREFIX + cloudUserId
         : TRANSLATION_CACHE_KEY;
-    }
-
-    function currentCefrOverridesKey() {
-      return cloudUserId
-        ? USER_CEFR_OVERRIDES_PREFIX + cloudUserId
-        : CEFR_OVERRIDES_KEY;
     }
 
     function loadUserVocabularyCache(userId) {
@@ -1849,7 +1818,7 @@
         return "Not classified";
       }
       if (entry.cefrSource === "manual") {
-        return entry.cefrLevel + " (Manual)";
+        return entry.cefrLevel + " (User-set reference)";
       }
       if (entry.cefrSource === "unverified") {
         return entry.cefrLevel + " (Unverified)";
@@ -1868,19 +1837,35 @@
 
     function primaryChineseMeaning(value) {
       const meaning = decodeDisplayText(value)
-        .replace(/^\s*(?:chinese meaning|translation|translated by mymemory|mymemory|machine translation|translation source)\s*[:：]\s*/i, "")
-        .replace(/\s*[-–—]?[\[(（]?\s*(?:translated by mymemory|machine translation|machine translated|translation source|mymemory)\s*[\])）]?\s*$/i, "")
+        .replace(/^\s*(?:chinese meaning|translation|machine translation|translation source|机器翻译)\s*[:：]\s*/i, "")
+        .replace(/\s*[-–—]?[\[(（]?\s*(?:machine translation|machine translated|translation source)\s*[\])）]?\s*$/i, "")
         .trim();
       if (!meaning) {
         return "";
       }
-      const primary = meaning.split(/[；;，,。/|\r\n]/, 1)[0].trim();
-      const compactLength = Array.from(primary.replace(/\s/g, "")).length;
-      if (!primary || !/[\u3400-\u9fff]/.test(primary) ||
-          /[\u00c0-\u00ff�]/.test(primary) || compactLength > 18) {
-        return "";
+      const candidates = meaning.split(/[；;，,。、\/|\r\n]/).map(function (part) {
+        return part.trim();
+      });
+      for (let index = 0; index < candidates.length; index += 1) {
+        const candidate = candidates[index];
+        const compactLength = Array.from(candidate.replace(/\s/g, "")).length;
+        if (!candidate || !/[\u3400-\u9fff]/.test(candidate) ||
+            /[A-Za-z0-9\u00c0-\u00ff�]/.test(candidate) || compactLength > 12) {
+          continue;
+        }
+        return candidate;
       }
-      return primary;
+      return "";
+    }
+
+    function curatedChineseTranslation(entry) {
+      const preferredMeanings = {
+        besmirch: "玷污",
+        restitution: "归还",
+        shred: "撕碎",
+        stiffness: "僵硬"
+      };
+      return preferredMeanings[normalizedWordKey(entry.word)] || "";
     }
 
     function decodeDisplayText(value) {
@@ -1898,7 +1883,7 @@
     function cachedTranslation(key) {
       const cached = translationCache[key];
       if (!cached || typeof cached.text !== "string" ||
-          !["machine", "manual", "existing"].includes(cached.source)) {
+          !["ecdict", "manual", "existing"].includes(cached.source)) {
         return null;
       }
       return cached;
@@ -1918,159 +1903,122 @@
       return false;
     }
 
-    function decodeTranslation(text) {
-      const decoder = document.createElement("textarea");
-      decoder.innerHTML = text;
-      return decoder.value.trim();
+    async function ecdictRecordForWord(word) {
+      const normalized = normalizedWordKey(word);
+      const letters = normalized.match(/[a-z]/g) || [];
+      if (letters.length === 0) {
+        return null;
+      }
+
+      const prefix = letters.slice(0, 2).join("");
+      let shardRequest = ecdictShardCache.get(prefix);
+      if (!shardRequest) {
+        const shardUrl = new URL(
+          "dictionary-data/" + prefix + ".json",
+          document.baseURI
+        ).toString();
+        shardRequest = fetch(shardUrl).then(function (response) {
+          if (response.status === 404) {
+            return null;
+          }
+          if (!response.ok) {
+            throw new Error("ECDICT data returned an error (" + response.status + ").");
+          }
+          return response.json();
+        }).then(function (data) {
+          if (data === null) {
+            return null;
+          }
+          if (!data || typeof data !== "object" || Array.isArray(data)) {
+            throw new Error("ECDICT data has an invalid format.");
+          }
+          return data;
+        });
+        ecdictShardCache.set(prefix, shardRequest);
+      }
+
+      let shard;
+      try {
+        shard = await shardRequest;
+      } catch (error) {
+        if (ecdictShardCache.get(prefix) === shardRequest) {
+          ecdictShardCache.delete(prefix);
+        }
+        throw error;
+      }
+      if (!shard || !Object.prototype.hasOwnProperty.call(shard, normalized)) {
+        return null;
+      }
+      return shard[normalized];
     }
 
-    async function fetchChineseTranslation(text) {
-      const url = "https://api.mymemory.translated.net/get?q=" +
-        encodeURIComponent(text) + "&langpair=en|zh-CN";
-      const response = await fetch(url);
-      if (!response.ok) {
-        throw new Error("Translation service returned an error (" + response.status + ").");
+    function ecdictMeaningForEntry(record, entry) {
+      if (!record || typeof record !== "object") {
+        return "";
       }
-      const data = await response.json();
-      const translated = data && data.responseData &&
-        typeof data.responseData.translatedText === "string"
-        ? decodeTranslation(data.responseData.translatedText)
-        : "";
-      if (!translated || (data.responseStatus && Number(data.responseStatus) !== 200)) {
-        throw new Error("The translation service did not return a Chinese translation.");
+      const posKeys = {
+        noun: "n",
+        verb: "v",
+        adjective: "adj",
+        adverb: "adv",
+        preposition: "prep",
+        conjunction: "conj",
+        pronoun: "pron",
+        interjection: "int",
+        determiner: "det"
+      };
+      const definitions = Array.isArray(entry.definitions) ? entry.definitions : [];
+      for (let index = 0; index < definitions.length; index += 1) {
+        const partOfSpeech = typeof definitions[index].partOfSpeech === "string"
+          ? definitions[index].partOfSpeech.trim().toLowerCase()
+          : "";
+        const key = posKeys[partOfSpeech];
+        if (key && typeof record[key] === "string") {
+          return record[key];
+        }
       }
-      return translated;
+      return typeof record.default === "string" ? record.default : "";
     }
 
     async function translateEntry(entry) {
-      let requests = 0;
-      let failures = 0;
-      let skipped = 0;
-      let cacheFailures = 0;
-
-      async function translateField(key, currentText, setValue) {
-        const cached = cachedTranslation(key);
-        if (cached) {
-          setValue(cached.text, cached.source);
-          return;
-        }
-        if (translationFailures.has(key)) {
-          failures += 1;
-          return;
-        }
-        if (requests >= MAX_TRANSLATIONS_PER_SEARCH) {
-          skipped += 1;
-          return;
-        }
-
-        if (requests > 0) {
-          await new Promise(function (resolve) { setTimeout(resolve, 180); });
-        }
-        requests += 1;
-        try {
-          const translated = await fetchChineseTranslation(currentText);
-          setValue(translated, "machine");
-          if (!storeTranslation(key, translated, "machine", elements.dictionaryMessage)) {
-            cacheFailures += 1;
-          }
-        } catch (error) {
-          console.error("Chinese translation request failed:", error);
-          translationFailures.add(key);
-          failures += 1;
-        }
+      const key = translationKey(entry.word, "word", entry.word, "");
+      const cached = cachedTranslation(key);
+      if (cached && cached.source === "manual" && primaryChineseMeaning(cached.text)) {
+        entry.translationZh = cached.text;
+        entry.translationSource = cached.source;
+        return { ok: true, cacheFailure: false, source: "manual-cache" };
       }
 
-      if (entry.word) {
-        await translateField(
-          translationKey(entry.word, "word", entry.word, ""),
-          entry.word,
-          function (text, source) {
-            entry.translationZh = text;
-            entry.translationSource = source;
-          }
-        );
+      if (cached && (cached.source === "ecdict" || cached.source === "existing") &&
+          primaryChineseMeaning(cached.text)) {
+        entry.translationZh = cached.text;
+        entry.translationSource = cached.source;
+        return { ok: true, cacheFailure: false, source: "cache" };
       }
 
-      for (let index = 0; index < entry.definitions.length; index += 1) {
-        const definition = entry.definitions[index];
-        if (!definition.definition) {
-          continue;
+      if (!entry.word) {
+        return { ok: false, error: new Error("No word was provided for translation.") };
+      }
+
+      try {
+        const record = await ecdictRecordForWord(entry.word);
+        const sourceMeaning = ecdictMeaningForEntry(record, entry);
+        const translated = sourceMeaning ? (curatedChineseTranslation(entry) || sourceMeaning) : "";
+        if (!translated) {
+          entry.translationZh = "";
+          entry.translationSource = "";
+          return { ok: false, unavailable: true, retryable: false };
         }
-        await translateField(
-          translationKey(entry.word, "definition", definition.definition, definition.partOfSpeech),
-          definition.definition,
-          function (text, source) {
-            definition.translationZh = text;
-            definition.translationSource = source;
-          }
-        );
+        entry.translationZh = translated;
+        entry.translationSource = "ecdict";
+        const cacheSaved = storeTranslation(key, translated, "ecdict", elements.dictionaryMessage);
+        return { ok: true, cacheFailure: !cacheSaved, source: "ecdict" };
+      } catch (error) {
+        console.error("Could not load ECDICT translation:", error);
+        entry.translationZh = "";
+        entry.translationSource = "";
+        return { ok: false, error: error, retryable: true };
       }
-
-      return {
-        requests: requests,
-        failures: failures,
-        skipped: skipped,
-        cacheFailures: cacheFailures
-      };
-    }
-
-    function syncSavedEntryFromLookup(entry) {
-      const saved = findVocabularyEntry(entry.word);
-      if (!saved) {
-        return true;
-      }
-
-      const previous = JSON.parse(JSON.stringify(saved));
-      let changed = false;
-      if (!saved.audioUrl && entry.audioUrl) {
-        saved.audioUrl = entry.audioUrl;
-        changed = true;
-      }
-      if (!saved.translationZh && saved.translationSource !== "manual" && entry.translationZh) {
-        saved.translationZh = entry.translationZh;
-        saved.translationSource = entry.translationSource;
-        changed = true;
-      }
-      entry.definitions.forEach(function (definition) {
-        let savedDefinition = saved.definitions.find(function (item) {
-          return item.definition === definition.definition &&
-            item.partOfSpeech === definition.partOfSpeech;
-        });
-        if (!savedDefinition) {
-          savedDefinition = Object.assign({}, definition);
-          saved.definitions.push(savedDefinition);
-          changed = true;
-        } else {
-          if (!savedDefinition.example && definition.example) {
-            savedDefinition.example = definition.example;
-            changed = true;
-          }
-          if (!savedDefinition.translationZh &&
-              savedDefinition.translationSource !== "manual" &&
-              definition.translationZh) {
-            savedDefinition.translationZh = definition.translationZh;
-            savedDefinition.translationSource = definition.translationSource;
-            changed = true;
-          }
-        }
-      });
-      entry.examples.forEach(function (example) {
-        if (!saved.examples.includes(example)) {
-          saved.examples.push(example);
-          changed = true;
-        }
-      });
-      if (saved.cefrSource !== "manual" && entry.cefrLevel) {
-        saved.cefrLevel = entry.cefrLevel;
-        saved.cefrSource = entry.cefrSource;
-        changed = true;
-      }
-
-      if (changed && !saveVocabulary()) {
-        Object.assign(saved, previous);
-        return false;
-      }
-      return true;
     }
 
     function saveVocabulary() {
@@ -3109,7 +3057,6 @@
       setAuthView(user);
       setSyncStatus("Loading your cloud vocabulary…", false);
       translationCache = loadStoredObject(currentTranslationCacheKey());
-      cefrOverrides = loadCefrOverrides(currentCefrOverridesKey());
       try {
         cachedEntries = loadUserVocabularyCache(userId);
         syncMeta = loadCloudSyncMeta(userId);
@@ -3161,7 +3108,6 @@
       vocabulary = loadVocabulary();
       vocabularySnapshot = cloneData(vocabulary);
       translationCache = loadStoredObject(TRANSLATION_CACHE_KEY);
-      cefrOverrides = loadCefrOverrides(CEFR_OVERRIDES_KEY);
       elements.syncConflictPanel.hidden = true;
       elements.localImportPanel.hidden = true;
       elements.syncStatus.textContent = "";
@@ -3418,7 +3364,6 @@
       const examples = [];
       const estimate = estimateCefr(typeof first.word === "string" ? first.word : searchedWord);
       const word = typeof first.word === "string" ? first.word : searchedWord;
-      const override = cefrOverrides[normalizedWordKey(word)];
 
       data.forEach(function (item) {
         const candidate = britishPronunciation(item);
@@ -3452,8 +3397,8 @@
         examples: examples,
         translationZh: "",
         translationSource: "",
-        cefrLevel: override ? override.level : estimate.level,
-        cefrSource: override ? "manual" : estimate.source,
+        cefrLevel: estimate.level,
+        cefrSource: estimate.source,
         addedAt: new Date().toISOString(),
         reviews: 0,
         known: 0,
@@ -3472,6 +3417,11 @@
       elements.dictionaryInput.disabled = true;
       elements.dictionaryResults.replaceChildren();
       setMessage(elements.dictionaryMessage, "Searching the free dictionary…");
+      lookupResult = null;
+      translationUnavailableWord = "";
+      translationRetrying = false;
+      translationRetryable = false;
+      translationLookupPending = false;
 
       try {
         const response = await fetch(
@@ -3490,32 +3440,32 @@
         }
 
         lookupResult = dictionaryEntryFromApi(data, searchedWord);
+        translationLookupPending = true;
         renderDictionaryResult(lookupResult);
-        setMessage(elements.dictionaryMessage, "English entry loaded. Getting Chinese translations…");
+        setMessage(elements.dictionaryMessage, "Looking up the Chinese meaning…");
         const translationResult = await translateEntry(lookupResult);
-        const savedEntryUpdated = syncSavedEntryFromLookup(lookupResult);
+        translationLookupPending = false;
+        translationUnavailableWord = translationResult.ok
+          ? ""
+          : normalizedWordKey(lookupResult.word);
+        translationRetryable = Boolean(translationResult.retryable);
         renderDictionaryResult(lookupResult);
-        let message = "Dictionary entry loaded; Chinese translations are cached in this browser.";
-        if (!savedEntryUpdated) {
-          message += " Existing saved-word updates could not be stored.";
+        if (!translationResult.ok) {
+          setMessage(
+            elements.dictionaryMessage,
+            translationResult.retryable
+              ? "Could not load ECDICT data. Check your connection and retry."
+              : "",
+            translationResult.retryable ? "error" : ""
+          );
+        } else if (translationResult.cacheFailure) {
+          setMessage(elements.dictionaryMessage, "Chinese meaning loaded, but could not be cached in this browser.", "error");
+        } else {
+          setMessage(elements.dictionaryMessage, "");
         }
-        if (translationResult.failures > 0) {
-          message = "Dictionary entry loaded, but " + translationResult.failures +
-            " translation(s) could not be retrieved.";
-        }
-        if (translationResult.skipped > 0) {
-          message += " Some translations were skipped to limit free requests.";
-        }
-        if (translationResult.cacheFailures > 0) {
-          message += " Some translations could not be cached in browser storage.";
-        }
-        setMessage(
-          elements.dictionaryMessage,
-          message,
-          translationResult.failures || translationResult.cacheFailures || !savedEntryUpdated ? "error" : ""
-        );
       } catch (error) {
         console.error("Dictionary search failed:", error);
+        translationLookupPending = false;
         lookupResult = null;
         setMessage(
           elements.dictionaryMessage,
@@ -3555,27 +3505,74 @@
       card.appendChild(heading);
 
       renderEntryTranslation(card, entry);
-      renderCefrControl(card, entry, function () {
-        renderDictionaryResult(entry);
-      });
+      renderCefrBadge(card, entry);
       renderEntryExample(card, entry);
+      if (translationRetryable &&
+          translationUnavailableWord === normalizedWordKey(entry.word)) {
+        const retryButton = createButton(
+          translationRetrying ? "Retrying…" : "Retry ECDICT lookup",
+          "secondary-button",
+          retryDictionaryTranslation
+        );
+        retryButton.disabled = translationRetrying;
+        card.appendChild(retryButton);
+      }
 
       elements.dictionaryResults.replaceChildren(card);
     }
 
     function renderEntryTranslation(parent, entry) {
-      const definitions = Array.isArray(entry.definitions) ? entry.definitions : [];
-      const translations = [entry.translationZh].concat(
-        definitions.map(function (definition) {
-          return definition.translationZh;
-        })
+      const meaning = primaryChineseMeaning(entry.translationZh);
+      if (meaning) {
+        addText(parent, "p", meaning, "translation-value");
+        return;
+      }
+      addText(
+        parent,
+        "p",
+        translationLookupPending ? "Looking up the Chinese meaning…" : "Chinese meaning unavailable",
+        "translation-value"
       );
-      for (let index = 0; index < translations.length; index += 1) {
-        const meaning = primaryChineseMeaning(translations[index]);
-        if (meaning) {
-          addText(parent, "p", meaning, "translation-value");
-          return;
-        }
+    }
+
+    async function retryDictionaryTranslation() {
+      if (!lookupResult || translationRetrying) {
+        return;
+      }
+
+      const entry = lookupResult;
+      translationRetrying = true;
+      translationLookupPending = true;
+      elements.searchButton.disabled = true;
+      elements.dictionaryInput.disabled = true;
+      setMessage(elements.dictionaryMessage, "Retrying ECDICT lookup…");
+      renderDictionaryResult(entry);
+
+      let result;
+      try {
+        result = await translateEntry(entry);
+      } catch (error) {
+        console.error("Could not retry Chinese translation:", error);
+        result = { ok: false, error: error };
+      } finally {
+        translationRetrying = false;
+        translationLookupPending = false;
+        elements.searchButton.disabled = false;
+        elements.dictionaryInput.disabled = false;
+      }
+      translationUnavailableWord = result.ok ? "" : normalizedWordKey(entry.word);
+      translationRetryable = Boolean(result.retryable);
+      renderDictionaryResult(entry);
+      if (!result.ok) {
+        setMessage(
+          elements.dictionaryMessage,
+          result.retryable ? "Could not load ECDICT data. Check your connection and retry." : "",
+          result.retryable ? "error" : ""
+        );
+      } else if (result.cacheFailure) {
+        setMessage(elements.dictionaryMessage, "Chinese meaning loaded, but could not be cached in this browser.", "error");
+      } else {
+        setMessage(elements.dictionaryMessage, "");
       }
     }
 
@@ -3618,81 +3615,9 @@
       }
     }
 
-    function renderCefrControl(parent, entry, onChange) {
-      const controls = document.createElement("div");
-      controls.className = "cefr-controls";
+    function renderCefrBadge(parent, entry) {
       if (entry.cefrLevel) {
-        addText(controls, "span", "CEFR: " + cefrLabel(entry), "cefr-badge " + cefrClass(entry.cefrLevel));
-      }
-
-      const select = document.createElement("select");
-      select.setAttribute("aria-label", "Edit CEFR level for " + entry.word);
-      const choices = [
-        ["automatic", "Automatic"],
-        ["unclassified", "Not classified (manual)"],
-        ["A1", "A1"],
-        ["A2", "A2"],
-        ["B1", "B1"],
-        ["B2", "B2"],
-        ["C1", "C1"],
-        ["C2", "C2"]
-      ];
-      choices.forEach(function (choice) {
-        const option = document.createElement("option");
-        option.value = choice[0];
-        option.textContent = choice[1];
-        select.appendChild(option);
-      });
-      select.value = entry.cefrSource === "manual"
-        ? (entry.cefrLevel || "unclassified")
-        : "automatic";
-      select.addEventListener("change", function () {
-        chooseCefrLevel(entry, select.value);
-        onChange();
-      });
-      controls.appendChild(select);
-      parent.appendChild(controls);
-
-    }
-
-    function chooseCefrLevel(entry, choice) {
-      const key = normalizedWordKey(entry.word);
-      const previousOverrides = Object.assign({}, cefrOverrides);
-      const previousLevel = entry.cefrLevel;
-      const previousSource = entry.cefrSource;
-
-      if (choice === "automatic") {
-        delete cefrOverrides[key];
-        const estimate = estimateCefr(entry.word);
-        entry.cefrLevel = estimate.level;
-        entry.cefrSource = estimate.source;
-      } else {
-        entry.cefrLevel = choice === "unclassified" ? "" : choice;
-        entry.cefrSource = "manual";
-        cefrOverrides[key] = { level: entry.cefrLevel, source: "manual" };
-      }
-
-      if (!saveStoredObject(currentCefrOverridesKey(), cefrOverrides, elements.dictionaryMessage)) {
-        cefrOverrides = previousOverrides;
-        entry.cefrLevel = previousLevel;
-        entry.cefrSource = previousSource;
-        return;
-      }
-
-      const saved = findVocabularyEntry(entry.word);
-      if (saved) {
-        const savedPreviousLevel = saved.cefrLevel;
-        const savedPreviousSource = saved.cefrSource;
-        saved.cefrLevel = entry.cefrLevel;
-        saved.cefrSource = entry.cefrSource;
-        if (!saveVocabulary()) {
-          saved.cefrLevel = savedPreviousLevel;
-          saved.cefrSource = savedPreviousSource;
-          entry.cefrLevel = previousLevel;
-          entry.cefrSource = previousSource;
-          cefrOverrides = previousOverrides;
-          saveStoredObject(currentCefrOverridesKey(), cefrOverrides, elements.dictionaryMessage);
-        }
+        addText(parent, "span", "CEFR: " + cefrLabel(entry), "cefr-badge " + cefrClass(entry.cefrLevel));
       }
     }
 
@@ -3837,7 +3762,7 @@
         card.appendChild(heading);
 
         renderEntryTranslation(card, entry);
-        renderCefrControl(card, entry, renderVocabulary);
+        renderCefrBadge(card, entry);
         renderEntryExample(card, entry);
         renderSavedWordEditor(card, entry);
         elements.vocabularyList.appendChild(card);
@@ -3896,23 +3821,6 @@
         addLabeledControl(form, "Example sentences (one per line)", examplesInput);
       }
 
-      const levelSelect = document.createElement("select");
-      [
-        ["automatic", "Automatic"],
-        ["unclassified", "Not classified"],
-        ["A1", "A1"], ["A2", "A2"], ["B1", "B1"],
-        ["B2", "B2"], ["C1", "C1"], ["C2", "C2"]
-      ].forEach(function (choice) {
-        const option = document.createElement("option");
-        option.value = choice[0];
-        option.textContent = choice[1];
-        levelSelect.appendChild(option);
-      });
-      levelSelect.value = entry.cefrSource === "manual"
-        ? (entry.cefrLevel || "unclassified")
-        : "automatic";
-      addLabeledControl(form, "CEFR level", levelSelect);
-
       const definitionFields = [];
       entry.definitions.forEach(function (definition, index) {
         const fieldset = document.createElement("fieldset");
@@ -3952,9 +3860,6 @@
         }
 
         const previous = JSON.parse(JSON.stringify(entry));
-        const previousOverrides = Object.assign({}, cefrOverrides);
-        const oldWordKey = normalizedWordKey(entry.word);
-        const wordChanged = normalizedWordKey(newWord) !== oldWordKey;
         entry.word = newWord;
         entry.definitions = definitionFields.map(function (fields) {
           return {
@@ -3975,28 +3880,8 @@
           }).filter(Boolean);
         }
 
-        if (levelSelect.value === "automatic") {
-          const estimate = estimateCefr(entry.word);
-          entry.cefrLevel = estimate.level;
-          entry.cefrSource = estimate.source;
-          delete cefrOverrides[oldWordKey];
-          delete cefrOverrides[normalizedWordKey(entry.word)];
-        } else {
-          entry.cefrLevel = levelSelect.value === "unclassified" ? "" : levelSelect.value;
-          entry.cefrSource = "manual";
-          delete cefrOverrides[oldWordKey];
-          cefrOverrides[normalizedWordKey(entry.word)] = { level: entry.cefrLevel, source: "manual" };
-        }
-
-        if (!saveStoredObject(currentCefrOverridesKey(), cefrOverrides, elements.vocabularyMessage)) {
-          Object.assign(entry, previous);
-          cefrOverrides = previousOverrides;
-          return;
-        }
         if (!saveVocabulary()) {
           Object.assign(entry, previous);
-          cefrOverrides = previousOverrides;
-          saveStoredObject(currentCefrOverridesKey(), cefrOverrides, elements.vocabularyMessage);
           return;
         }
 
