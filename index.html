@@ -1,0 +1,2473 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#f5f7fb">
+  <title>My English Dictionary</title>
+  <style>
+    :root {
+      color-scheme: light;
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      color: #172033;
+      background: #f5f7fb;
+      font-synthesis: none;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      min-width: 320px;
+    }
+
+    button,
+    input,
+    select {
+      font: inherit;
+    }
+
+    button {
+      border: 0;
+      border-radius: 10px;
+      padding: 11px 16px;
+      color: white;
+      background: #4658d8;
+      cursor: pointer;
+      font-weight: 650;
+      transition: background 150ms ease, transform 150ms ease;
+    }
+
+    button:hover:not(:disabled) {
+      background: #3445bd;
+      transform: translateY(-1px);
+    }
+
+    button:focus-visible,
+    input:focus-visible,
+    select:focus-visible {
+      outline: 3px solid #9da8ff;
+      outline-offset: 2px;
+    }
+
+    button:disabled {
+      cursor: not-allowed;
+      opacity: 0.55;
+    }
+
+    .secondary-button {
+      color: #3445bd;
+      background: #eef0ff;
+    }
+
+    .secondary-button:hover:not(:disabled) {
+      background: #e0e4ff;
+    }
+
+    .danger-button {
+      color: #a43542;
+      background: #fff0f1;
+    }
+
+    .danger-button:hover:not(:disabled) {
+      background: #ffe0e3;
+    }
+
+    .success-button {
+      background: #21804b;
+    }
+
+    .success-button:hover:not(:disabled) {
+      background: #17653a;
+    }
+
+    .unknown-button {
+      background: #ab4850;
+    }
+
+    .unknown-button:hover:not(:disabled) {
+      background: #8d343c;
+    }
+
+    .shell {
+      width: min(940px, calc(100% - 32px));
+      margin: 0 auto;
+      padding: 34px 0 56px;
+    }
+
+    .header {
+      margin-bottom: 24px;
+    }
+
+    .eyebrow {
+      margin: 0 0 8px;
+      color: #4658d8;
+      font-size: 0.8rem;
+      font-weight: 750;
+      letter-spacing: 0.09em;
+      text-transform: uppercase;
+    }
+
+    h1 {
+      margin: 0;
+      font-size: clamp(1.8rem, 5vw, 2.4rem);
+      letter-spacing: -0.04em;
+    }
+
+    .subtitle {
+      margin: 8px 0 0;
+      color: #657087;
+    }
+
+    .tabs {
+      display: flex;
+      gap: 8px;
+      margin-bottom: 20px;
+      padding: 6px;
+      overflow-x: auto;
+      border: 1px solid #e4e8f1;
+      border-radius: 14px;
+      background: white;
+    }
+
+    .tab-button {
+      flex: 1;
+      min-width: 115px;
+      color: #59647a;
+      background: transparent;
+    }
+
+    .tab-button:hover:not(:disabled) {
+      color: #3445bd;
+      background: #f2f3ff;
+      transform: none;
+    }
+
+    .tab-button[aria-selected="true"] {
+      color: white;
+      background: #4658d8;
+    }
+
+    .panel {
+      padding: clamp(18px, 4vw, 28px);
+      border: 1px solid #e4e8f1;
+      border-radius: 18px;
+      background: white;
+      box-shadow: 0 12px 35px rgb(22 35 70 / 5%);
+    }
+
+    .panel[hidden] {
+      display: none;
+    }
+
+    .section-heading {
+      margin: 0;
+      font-size: 1.25rem;
+    }
+
+    .section-description {
+      margin: 7px 0 20px;
+      color: #68748a;
+      line-height: 1.55;
+    }
+
+    .search-row,
+    .toolbar,
+    .word-heading,
+    .result-heading,
+    .review-actions,
+    .backup-actions {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .search-row {
+      margin-bottom: 16px;
+    }
+
+    .search-row input {
+      flex: 1;
+    }
+
+    input,
+    select {
+      min-width: 0;
+      padding: 11px 13px;
+      border: 1px solid #dce1ec;
+      border-radius: 10px;
+      color: #172033;
+      background: white;
+    }
+
+    input::placeholder {
+      color: #8a93a6;
+    }
+
+    .hint,
+    .message,
+    .empty-state {
+      color: #68748a;
+      line-height: 1.55;
+    }
+
+    .message {
+      min-height: 24px;
+      margin: 10px 0;
+    }
+
+    .message.error {
+      color: #a43542;
+    }
+
+    .message.success {
+      color: #17653a;
+    }
+
+    .note {
+      margin-top: 20px;
+      padding: 13px 15px;
+      border-radius: 11px;
+      color: #4a5873;
+      background: #f4f6fb;
+      font-size: 0.92rem;
+      line-height: 1.55;
+    }
+
+    .note p {
+      margin: 4px 0;
+    }
+
+    .result-card,
+    .word-card,
+    .review-card {
+      margin-top: 16px;
+      padding: 18px;
+      border: 1px solid #e7eaf2;
+      border-radius: 14px;
+      background: #fff;
+    }
+
+    .result-heading,
+    .word-heading {
+      justify-content: space-between;
+      flex-wrap: wrap;
+    }
+
+    .result-heading h3,
+    .word-heading h3 {
+      margin: 0;
+      font-size: 1.35rem;
+      overflow-wrap: anywhere;
+    }
+
+    .meta {
+      margin: 12px 0;
+      color: #68748a;
+      line-height: 1.5;
+    }
+
+    .meaning-group {
+      padding-top: 13px;
+      border-top: 1px solid #edf0f5;
+    }
+
+    .meaning-group + .meaning-group {
+      margin-top: 13px;
+    }
+
+    .part-of-speech {
+      margin: 0 0 6px;
+      color: #4658d8;
+      font-weight: 700;
+    }
+
+    .translation-value {
+      margin: 8px 0;
+      color: #334155;
+      line-height: 1.55;
+    }
+
+    .cefr-controls {
+      display: flex;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin: 12px 0;
+    }
+
+    .cefr-badge {
+      display: inline-block;
+      padding: 4px 10px;
+      border-radius: 999px;
+      font-size: 0.86rem;
+      font-weight: 750;
+    }
+
+    .cefr-green {
+      color: #17653a;
+      background: #e5f6ec;
+    }
+
+    .cefr-blue {
+      color: #2849a3;
+      background: #e8efff;
+    }
+
+    .cefr-orange {
+      color: #925100;
+      background: #fff0d9;
+    }
+
+    .cefr-red {
+      color: #a43542;
+      background: #ffe8ea;
+    }
+
+    .cefr-neutral {
+      color: #59647a;
+      background: #edf0f5;
+    }
+
+    .cefr-controls select {
+      padding: 8px 10px;
+      font-size: 0.92rem;
+    }
+
+    .definition {
+      margin: 5px 0;
+      line-height: 1.55;
+    }
+
+    .example {
+      margin: 7px 0 0 14px;
+      color: #68748a;
+      line-height: 1.55;
+    }
+
+    .word-list {
+      display: grid;
+      gap: 12px;
+      margin-top: 18px;
+    }
+
+    .word-card {
+      margin: 0;
+    }
+
+    .word-card p {
+      margin: 9px 0 0;
+      color: #68748a;
+      line-height: 1.5;
+    }
+
+    .word-card .mastered-status {
+      color: #206b42;
+      font-weight: 700;
+    }
+
+    .word-card-actions {
+      display: flex;
+      gap: 8px;
+    }
+
+    .word-card-actions button {
+      padding: 8px 11px;
+      font-size: 0.9rem;
+    }
+
+    .word-editor {
+      display: grid;
+      gap: 10px;
+      margin-top: 14px;
+      padding-top: 14px;
+      border-top: 1px solid #edf0f5;
+    }
+
+    .word-editor[hidden] {
+      display: none;
+    }
+
+    .word-editor label {
+      display: grid;
+      gap: 5px;
+      color: #59647a;
+      font-size: 0.9rem;
+      font-weight: 650;
+    }
+
+    .word-editor textarea {
+      min-height: 64px;
+      resize: vertical;
+    }
+
+    .definition-editor {
+      display: grid;
+      gap: 9px;
+      padding: 12px;
+      border: 1px solid #e7eaf2;
+      border-radius: 10px;
+    }
+
+    .toolbar {
+      flex-wrap: wrap;
+      justify-content: space-between;
+    }
+
+    .toolbar input {
+      flex: 1 1 220px;
+    }
+
+    .toolbar select {
+      flex: 0 1 190px;
+    }
+
+    .backup-actions {
+      flex-wrap: wrap;
+      margin-top: 18px;
+    }
+
+    .backup-actions input {
+      display: none;
+    }
+
+    .review-card {
+      display: flex;
+      width: min(100%, 620px);
+      min-height: 360px;
+      margin: 0 auto;
+      padding: clamp(24px, 7vw, 52px);
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 20px;
+      text-align: center;
+      background: #fff;
+      border: 1px solid #e8ebf0;
+      border-radius: 24px;
+      box-shadow: 0 12px 36px rgb(22 35 70 / 6%);
+    }
+
+    .review-word {
+      margin: 0;
+      font-size: clamp(2.6rem, 11vw, 4.5rem);
+      line-height: 1.08;
+      letter-spacing: -0.04em;
+      overflow-wrap: anywhere;
+    }
+
+    .review-details {
+      width: 100%;
+      padding: 18px 0 0;
+      border-top: 1px solid #e7eaf2;
+      text-align: left;
+    }
+
+    .review-details[hidden] {
+      display: none;
+    }
+
+    .review-actions {
+      justify-content: center;
+      flex-wrap: wrap;
+    }
+
+    .review-pronunciation {
+      min-height: 46px;
+      padding: 11px 18px;
+      border-radius: 14px;
+    }
+
+    .review-stat-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 10px;
+      margin: 0 0 18px;
+    }
+
+    .review-stat {
+      padding: 12px;
+      border: 1px solid #e7eaf2;
+      border-radius: 14px;
+      background: #fff;
+      text-align: center;
+    }
+
+    .review-stat span {
+      display: block;
+      color: #68748a;
+      font-size: 0.84rem;
+    }
+
+    .review-stat strong {
+      display: block;
+      margin-top: 5px;
+      font-size: 1.35rem;
+    }
+
+    .due-list {
+      display: grid;
+      gap: 9px;
+      margin: 0;
+    }
+
+    .due-word {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      padding: 12px 14px;
+      border: 1px solid #e7eaf2;
+      border-radius: 12px;
+    }
+
+    .due-word strong {
+      overflow-wrap: anywhere;
+    }
+
+    .due-word small {
+      display: block;
+      margin-top: 4px;
+      color: #68748a;
+    }
+
+    .due-word button {
+      flex: 0 0 auto;
+      padding: 8px 12px;
+    }
+
+    .review-rating-button {
+      min-width: 0;
+      min-height: 68px;
+      border-radius: 14px;
+      font-size: 1.08rem;
+      font-weight: 750;
+    }
+
+    #reviewPanel {
+      display: flex;
+      padding: 0;
+      flex-direction: column;
+      gap: 18px;
+      border: 0;
+      background: transparent;
+      box-shadow: none;
+    }
+
+    #reviewPanel[hidden] {
+      display: none;
+    }
+
+    #reviewMessage:empty {
+      display: none;
+    }
+
+    .today-review {
+      width: min(100%, 620px);
+      margin: 0 auto;
+    }
+
+    .today-review-toggle {
+      display: flex;
+      width: 100%;
+      min-height: 48px;
+      align-items: center;
+      justify-content: space-between;
+      padding: 12px 16px;
+      border: 1px solid #e4e8f1;
+      border-radius: 14px;
+      color: #3445bd;
+      background: #fff;
+      box-shadow: none;
+      text-align: left;
+    }
+
+    .today-review-toggle:hover:not(:disabled) {
+      background: #f8f9fc;
+      transform: none;
+    }
+
+    .today-review-toggle::after {
+      width: 8px;
+      height: 8px;
+      border-right: 2px solid currentColor;
+      border-bottom: 2px solid currentColor;
+      content: "";
+      transform: rotate(45deg);
+      transition: transform 150ms ease;
+    }
+
+    .today-review-toggle[aria-expanded="true"]::after {
+      transform: rotate(225deg);
+    }
+
+    .today-review-content {
+      display: grid;
+      gap: 12px;
+      padding: 14px 0 0;
+    }
+
+    .today-review-content[hidden] {
+      display: none;
+    }
+
+    .review-rating-actions {
+      display: grid;
+      width: min(100%, 620px);
+      margin: 0 auto;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 9px;
+    }
+
+    .review-rating-button.unknown-button {
+      color: #9c454d;
+      background: #fff0f1;
+    }
+
+    .review-rating-button.unknown-button:hover:not(:disabled) {
+      background: #ffe5e7;
+    }
+
+    .review-rating-button.success-button {
+      color: #206b42;
+      background: #eaf6ef;
+    }
+
+    .review-rating-button.success-button:hover:not(:disabled) {
+      background: #dff0e6;
+    }
+
+    .empty-state {
+      padding: 20px 4px;
+      text-align: center;
+    }
+
+    footer {
+      margin-top: 18px;
+      color: #778198;
+      font-size: 0.82rem;
+      line-height: 1.5;
+    }
+
+    @media (max-width: 580px) {
+      .shell {
+        width: min(100% - 22px, 940px);
+        padding-top: 22px;
+      }
+
+      .search-row {
+        align-items: stretch;
+        flex-direction: column;
+      }
+
+      .search-row button {
+        width: 100%;
+      }
+
+      .word-card-actions {
+        width: 100%;
+      }
+
+      .word-card-actions button {
+        flex: 1;
+      }
+
+      .backup-actions > * {
+        flex: 1;
+      }
+
+      .due-word {
+        align-items: flex-start;
+      }
+
+      #reviewPanel {
+        gap: 14px;
+      }
+
+      .review-card {
+        min-height: 340px;
+        border-radius: 22px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <main class="shell">
+    <header class="header">
+      <p class="eyebrow">A simple study space</p>
+      <h1>My English Dictionary</h1>
+      <p class="subtitle">Look up words, save them, and review at your own pace.</p>
+    </header>
+
+    <nav class="tabs" role="tablist" aria-label="App sections">
+      <button class="tab-button" id="dictionaryTab" type="button" role="tab" aria-selected="true" aria-controls="dictionaryPanel">Dictionary</button>
+      <button class="tab-button" id="vocabularyTab" type="button" role="tab" aria-selected="false" aria-controls="vocabularyPanel">My Vocabulary</button>
+      <button class="tab-button" id="reviewTab" type="button" role="tab" aria-selected="false" aria-controls="reviewPanel">Review</button>
+    </nav>
+
+    <section class="panel" id="dictionaryPanel" role="tabpanel" aria-labelledby="dictionaryTab">
+      <h2 class="section-heading">Look up an English word</h2>
+      <p class="section-description">Search for a word to see its British pronunciation, Chinese meaning, and examples.</p>
+      <form class="search-row" id="dictionaryForm">
+        <input id="dictionaryInput" type="search" autocomplete="off" placeholder="For example, brilliant" aria-label="English word to look up" required>
+        <button id="searchButton" type="submit">Search dictionary</button>
+      </form>
+      <p class="message" id="dictionaryMessage" role="status" aria-live="polite"></p>
+      <div id="dictionaryResults" aria-live="polite"></div>
+      <aside class="note">
+        <p><strong>Chinese:</strong> Meanings are retrieved automatically and cached in this browser. Each lookup sends at most four uncached texts; the free service may be rate-limited.</p>
+        <p>British audio is shown when a UK recording is available. A device voice is offered only if labelled English (UK).</p>
+      </aside>
+    </section>
+
+    <section class="panel" id="vocabularyPanel" role="tabpanel" aria-labelledby="vocabularyTab" hidden>
+      <h2 class="section-heading">My Vocabulary</h2>
+      <p class="section-description">Your words are stored only in this browser. Export a JSON backup to move them to another device.</p>
+      <div class="toolbar">
+        <input id="vocabularySearch" type="search" placeholder="Search saved words" aria-label="Search saved words">
+        <select id="sortWords" aria-label="Sort saved words">
+          <option value="newest">Newest first</option>
+          <option value="az">Word A to Z</option>
+          <option value="za">Word Z to A</option>
+          <option value="mostReviewed">Most reviewed</option>
+        </select>
+        <select id="cefrFilter" aria-label="Filter by CEFR level">
+          <option value="all">All CEFR levels</option>
+          <option value="unclassified">Not classified</option>
+          <option value="A1">A1</option>
+          <option value="A2">A2</option>
+          <option value="B1">B1</option>
+          <option value="B2">B2</option>
+          <option value="C1">C1</option>
+          <option value="C2">C2</option>
+        </select>
+      </div>
+      <div class="backup-actions">
+        <button class="secondary-button" id="exportButton" type="button">Export JSON backup</button>
+        <button class="secondary-button" id="importButton" type="button">Import JSON backup</button>
+        <input id="importFile" type="file" accept="application/json,.json" aria-label="Choose a JSON backup">
+      </div>
+      <p class="message" id="vocabularyMessage" role="status" aria-live="polite"></p>
+      <div class="word-list" id="vocabularyList"></div>
+    </section>
+
+    <section class="panel" id="reviewPanel" role="tabpanel" aria-labelledby="reviewTab" hidden>
+      <div class="review-card" id="reviewCard"></div>
+      <div class="review-rating-actions" id="reviewRatingActions"></div>
+      <p class="message" id="reviewMessage" role="status" aria-live="polite"></p>
+      <div class="today-review">
+        <button
+          class="today-review-toggle"
+          id="todayReviewToggle"
+          type="button"
+          aria-expanded="false"
+          aria-controls="todayReviewDetails"
+        >Today’s Review</button>
+        <div class="today-review-content" id="todayReviewDetails" hidden>
+          <div class="review-stat-grid" aria-label="Review statistics">
+            <div class="review-stat"><span>Total vocabulary</span><strong id="totalVocabularyCount">0</strong></div>
+            <div class="review-stat"><span>Words due today</span><strong id="dueTodayCount">0</strong></div>
+            <div class="review-stat"><span>New to FSRS</span><strong id="newWordsCount">0</strong></div>
+            <div class="review-stat"><span>Words reviewed today</span><strong id="reviewedTodayCount">0</strong></div>
+          </div>
+          <div class="due-list" id="todayReviewList"></div>
+        </div>
+      </div>
+    </section>
+
+    <footer>
+      Dictionary data from <a href="https://dictionaryapi.dev/" target="_blank" rel="noopener noreferrer">Free Dictionary API</a>.
+      Scheduling uses <a href="https://github.com/open-spaced-repetition/ts-fsrs" target="_blank" rel="noopener noreferrer">ts-fsrs</a> (MIT).
+      Saved words, translations, and review history stay in this browser unless you export them.
+    </footer>
+  </main>
+
+  <script>
+    const STORAGE_KEY = "myEnglishDictionary.v1";
+    const TRANSLATION_CACHE_KEY = "myEnglishDictionary.translations.v1";
+    const CEFR_OVERRIDES_KEY = "myEnglishDictionary.cefrOverrides.v1";
+    const MAX_TRANSLATIONS_PER_SEARCH = 4;
+    const FSRS_PACKAGE_VERSION = "6.0.0";
+    const FSRS_MODEL_VERSION = "FSRS-7";
+    const starterWords = [
+      {
+        word: "Besmirch",
+        translationZh: "玷污；损害名誉",
+        examples: ["The newspaper refused to besmirch her good name."]
+      },
+      {
+        word: "Summon",
+        translationZh: "召唤；鼓起（勇气等）",
+        examples: ["She had to summon the courage to speak."]
+      },
+      {
+        word: "Restitution",
+        translationZh: "赔偿；归还",
+        examples: ["The court ordered restitution to the victims."]
+      },
+      {
+        word: "Avalanche",
+        translationZh: "雪崩",
+        examples: ["The skiers were warned about the risk of an avalanche."]
+      },
+      {
+        word: "Interim",
+        translationZh: "临时的；过渡期间的",
+        examples: ["An interim manager will lead the team this month."]
+      }
+    ];
+
+    const elements = {
+      dictionaryForm: document.getElementById("dictionaryForm"),
+      dictionaryInput: document.getElementById("dictionaryInput"),
+      searchButton: document.getElementById("searchButton"),
+      dictionaryMessage: document.getElementById("dictionaryMessage"),
+      dictionaryResults: document.getElementById("dictionaryResults"),
+      vocabularySearch: document.getElementById("vocabularySearch"),
+      sortWords: document.getElementById("sortWords"),
+      cefrFilter: document.getElementById("cefrFilter"),
+      vocabularyMessage: document.getElementById("vocabularyMessage"),
+      vocabularyList: document.getElementById("vocabularyList"),
+      importFile: document.getElementById("importFile"),
+      reviewCard: document.getElementById("reviewCard"),
+      reviewRatingActions: document.getElementById("reviewRatingActions"),
+      reviewMessage: document.getElementById("reviewMessage"),
+      todayReviewToggle: document.getElementById("todayReviewToggle"),
+      todayReviewDetails: document.getElementById("todayReviewDetails"),
+      todayReviewList: document.getElementById("todayReviewList"),
+      totalVocabularyCount: document.getElementById("totalVocabularyCount"),
+      dueTodayCount: document.getElementById("dueTodayCount"),
+      newWordsCount: document.getElementById("newWordsCount"),
+      reviewedTodayCount: document.getElementById("reviewedTodayCount")
+    };
+
+    let translationCache = loadStoredObject(TRANSLATION_CACHE_KEY);
+    let cefrOverrides = loadCefrOverrides();
+    let vocabulary = loadVocabulary();
+    let lookupResult = null;
+    let activeReviewWord = "";
+    let answerRevealed = false;
+    let todayReviewExpanded = false;
+    const translationFailures = new Set();
+    let fsrsModulePromise = null;
+    let fsrsSchedulerInstance = null;
+    let fsrsLoadError = null;
+    let reviewSubmitting = false;
+    let dueRefreshTimer = null;
+
+    function emptyEntry(starter, addedAt) {
+      const estimate = estimateCefr(starter.word);
+      return {
+        word: starter.word,
+        fsrsId: starter.word.toLowerCase() + ":" + addedAt,
+        audioUrl: "",
+        definitions: [],
+        examples: starter.examples.slice(),
+        translationZh: starter.translationZh || "",
+        translationSource: starter.translationZh ? "existing" : "",
+        cefrLevel: estimate.level,
+        cefrSource: estimate.level ? "heuristic" : "none",
+        addedAt: addedAt,
+        dueAt: addedAt,
+        fsrsVersion: "",
+        fsrsCard: null,
+        reviewStatus: "active",
+        masteredAt: "",
+        reviewHistory: [],
+        reviews: 0,
+        known: 0,
+        unknown: 0
+      };
+    }
+
+    function loadStoredObject(key) {
+      try {
+        const saved = localStorage.getItem(key);
+        if (saved === null) {
+          return {};
+        }
+        const parsed = JSON.parse(saved);
+        if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
+          throw new Error("Stored cache must be an object.");
+        }
+        return parsed;
+      } catch (error) {
+        console.error("Could not load stored app data:", error);
+        setMessage(elements.vocabularyMessage, "Some saved translation or CEFR data could not be loaded: " + error.message, "error");
+        return {};
+      }
+    }
+
+    function loadCefrOverrides() {
+      const saved = loadStoredObject(CEFR_OVERRIDES_KEY);
+      const overrides = {};
+      Object.keys(saved).forEach(function (key) {
+        const value = saved[key];
+        if (value && typeof value === "object" &&
+            (value.level === "" || /^(A1|A2|B1|B2|C1|C2)$/.test(value.level))) {
+          overrides[key] = { level: value.level, source: "manual" };
+        }
+      });
+      return overrides;
+    }
+
+    function saveStoredObject(key, value, messageElement) {
+      try {
+        localStorage.setItem(key, JSON.stringify(value));
+        return true;
+      } catch (error) {
+        console.error("Could not save app data:", error);
+        setMessage(messageElement, "Could not save this change in browser storage. Check available storage space.", "error");
+        return false;
+      }
+    }
+
+    function loadVocabulary() {
+      try {
+        const saved = localStorage.getItem(STORAGE_KEY);
+        if (saved === null) {
+          const initial = starterWords.map(function (starter, index) {
+            return emptyEntry(starter, new Date(Date.now() - index * 1000).toISOString());
+          });
+          localStorage.setItem(STORAGE_KEY, JSON.stringify(initial));
+          return initial;
+        }
+
+        const parsed = JSON.parse(saved);
+        if (!Array.isArray(parsed)) {
+          throw new Error("Saved vocabulary must be a list.");
+        }
+        const normalized = parsed.map(normalizeSavedEntry);
+        if (normalized.some(function (entry) { return entry === null; })) {
+          throw new Error("Saved vocabulary contains an invalid entry.");
+        }
+        return normalized;
+      } catch (error) {
+        console.error("Could not load saved vocabulary:", error);
+        setMessage(elements.vocabularyMessage, "Could not load saved words: " + error.message + " Restore a JSON backup if needed.", "error");
+        return [];
+      }
+    }
+
+    function normalizeSavedEntry(entry) {
+      if (!entry || typeof entry.word !== "string" || !entry.word.trim()) {
+        return null;
+      }
+
+      const definitions = Array.isArray(entry.definitions)
+        ? entry.definitions.filter(function (item) {
+            return item && typeof item.definition === "string";
+          }).map(function (item) {
+            return {
+              partOfSpeech: typeof item.partOfSpeech === "string" ? item.partOfSpeech : "",
+              definition: item.definition,
+              example: typeof item.example === "string" ? item.example : "",
+              translationZh: typeof item.translationZh === "string" ? item.translationZh : "",
+              translationSource: ["machine", "manual", "existing"].includes(item.translationSource)
+                ? item.translationSource
+                : (item.translationZh ? "existing" : "")
+            };
+          })
+        : [];
+
+      const translationZh = typeof entry.translationZh === "string" ? entry.translationZh : "";
+      const legacyCefr = typeof entry.cefr === "string" && /^(A1|A2|B1|B2|C1|C2)$/.test(entry.cefr)
+        ? entry.cefr
+        : "";
+      const estimate = estimateCefr(entry.word.trim());
+      const hasCefrLevel = typeof entry.cefrLevel === "string";
+      const cefrLevel = hasCefrLevel
+        ? (/^(A1|A2|B1|B2|C1|C2)$/.test(entry.cefrLevel) ? entry.cefrLevel : "")
+        : legacyCefr || estimate.level;
+      const recognizedCefrSource = ["heuristic", "manual"].includes(entry.cefrSource);
+      const addedAt = typeof entry.addedAt === "string" ? entry.addedAt : new Date().toISOString();
+      const fsrsId = typeof entry.fsrsId === "string" && entry.fsrsId
+        ? entry.fsrsId
+        : entry.word.trim().toLowerCase() + ":" + addedAt;
+      const fsrsCard = normalizeFsrsCard(entry.fsrsCard, fsrsId);
+      const reviewStatus = entry.reviewStatus === "mastered" ? "mastered" : "active";
+      const dueAt = reviewStatus === "mastered" && entry.dueAt === ""
+        ? ""
+        : validIsoDate(entry.dueAt) || (fsrsCard ? fsrsCard.dueAt : addedAt);
+
+      const normalizedEntry = {
+        word: entry.word.trim(),
+        fsrsId: fsrsId,
+        audioUrl: isSafeAudioUrl(entry.audioUrl) ? entry.audioUrl : "",
+        definitions: definitions,
+        examples: Array.isArray(entry.examples)
+          ? entry.examples.filter(function (item) {
+              return typeof item === "string";
+            })
+          : [],
+        translationZh: translationZh,
+        translationSource: ["machine", "manual", "existing"].includes(entry.translationSource)
+          ? entry.translationSource
+          : (translationZh ? "existing" : ""),
+        cefrLevel: cefrLevel,
+        cefrSource: recognizedCefrSource
+          ? entry.cefrSource
+          : (legacyCefr
+            ? "manual"
+            : (entry.cefrLevel && cefrLevel ? "unverified" : (estimate.level ? "heuristic" : "none"))),
+        addedAt: addedAt,
+        dueAt: dueAt,
+        fsrsVersion: typeof entry.fsrsVersion === "string"
+          ? entry.fsrsVersion
+          : (fsrsCard ? FSRS_MODEL_VERSION : ""),
+        fsrsCard: fsrsCard,
+        reviewStatus: reviewStatus,
+        masteredAt: reviewStatus === "mastered" ? validIsoDate(entry.masteredAt) : "",
+        reviewHistory: Array.isArray(entry.reviewHistory)
+          ? entry.reviewHistory.filter(function (item) {
+              return item && typeof item.reviewedAt === "string";
+            }).map(function (item) {
+              return {
+                reviewedAt: validIsoDate(item.reviewedAt) || item.reviewedAt,
+                rating: typeof item.rating === "string" ? item.rating : "",
+                fsrsRating: typeof item.fsrsRating === "string" ? item.fsrsRating : "",
+                action: typeof item.action === "string" ? item.action : "",
+                ratingValue: nonNegativeNumber(item.ratingValue),
+                dueBefore: validIsoDate(item.dueBefore) || "",
+                dueAfter: validIsoDate(item.dueAfter) || "",
+                scheduledDays: Number.isFinite(item.scheduledDays) ? item.scheduledDays : 0,
+                stateBefore: Number.isFinite(item.stateBefore) ? item.stateBefore : null,
+                stateAfter: Number.isFinite(item.stateAfter) ? item.stateAfter : null,
+                revlog: item.revlog && typeof item.revlog === "object" ? item.revlog : null
+              };
+            })
+          : [],
+        reviews: nonNegativeNumber(entry.reviews),
+        known: nonNegativeNumber(entry.known),
+        unknown: nonNegativeNumber(entry.unknown)
+      };
+      if (typeof entry.ipa === "string") {
+        normalizedEntry.ipa = entry.ipa;
+      }
+      return normalizedEntry;
+    }
+
+    function validIsoDate(value) {
+      if (typeof value !== "string") {
+        return "";
+      }
+      const date = new Date(value);
+      return Number.isNaN(date.getTime()) ? "" : date.toISOString();
+    }
+
+    function normalizeFsrsCard(card, fsrsId) {
+      if (!card || typeof card !== "object" || !validIsoDate(card.dueAt)) {
+        return null;
+      }
+      const statuses = ["review", "new", "learning"];
+      const state = Number.isInteger(card.state) && card.state >= 0 && card.state <= 3
+        ? card.state
+        : 0;
+      return Object.assign({}, card, {
+        cardId: typeof card.cardId === "string" || typeof card.cardId === "number"
+          ? card.cardId
+          : fsrsId,
+        stabilityFast: Number.isFinite(card.stabilityFast) ? card.stabilityFast : 0,
+        stability: Number.isFinite(card.stability) ? card.stability : 0,
+        difficulty: Number.isFinite(card.difficulty) ? card.difficulty : 0,
+        dueAt: validIsoDate(card.dueAt),
+        lastReviewAt: card.lastReviewAt ? validIsoDate(card.lastReviewAt) || null : null,
+        reps: nonNegativeNumber(card.reps),
+        lapses: nonNegativeNumber(card.lapses),
+        scheduledDays: Number.isFinite(card.scheduledDays) ? card.scheduledDays : 0,
+        learningStep: nonNegativeNumber(card.learningStep),
+        state: state,
+        scheduleStatus: statuses.includes(card.scheduleStatus) ? card.scheduleStatus : "new"
+      });
+    }
+
+    function nonNegativeNumber(value) {
+      return Number.isFinite(value) && value >= 0 ? Math.floor(value) : 0;
+    }
+
+    function isSafeAudioUrl(value) {
+      if (typeof value !== "string") {
+        return false;
+      }
+      try {
+        const url = new URL(value);
+        return url.protocol === "https:" && url.hostname === "api.dictionaryapi.dev";
+      } catch (error) {
+        return false;
+      }
+    }
+
+    function estimateSyllables(word) {
+      const lower = word.toLowerCase();
+      const groups = lower.match(/[aeiouy]+/g);
+      let count = groups ? groups.length : 0;
+      if (lower.length > 3 && /e$/.test(lower) && !/le$/.test(lower) && count > 1) {
+        count -= 1;
+      }
+      return Math.max(1, count);
+    }
+
+    function estimateCefr(word) {
+      const normalized = word.trim().toLowerCase();
+      if (!/^[a-z]+$/.test(normalized)) {
+        return { level: "", source: "none" };
+      }
+
+      const length = normalized.length;
+      const syllables = estimateSyllables(normalized);
+      const affixes = [
+        /^(un|re|in|im|dis|pre|mis|over|under|inter|anti)/.test(normalized),
+        /(tion|sion|ity|ment|ous|ive|ology|ism|ance|ence|able|ible)$/.test(normalized)
+      ].filter(Boolean).length;
+
+      let level = "";
+      if (length <= 4 && syllables <= 1 && affixes === 0) {
+        level = "A1";
+      } else if (length <= 6 && syllables <= 2 && affixes <= 1) {
+        level = "A2";
+      } else if (length <= 8 && syllables <= 3) {
+        level = "B1";
+      } else if (length <= 11 && syllables <= 4) {
+        level = "B2";
+      } else if (length <= 15 && syllables <= 5) {
+        level = "C1";
+      } else if (length <= 20 && syllables <= 7) {
+        level = "C2";
+      }
+      return { level: level, source: level ? "heuristic" : "none" };
+    }
+
+    function cefrClass(level) {
+      if (level === "A1" || level === "A2") {
+        return "cefr-green";
+      }
+      if (level === "B1" || level === "B2") {
+        return "cefr-blue";
+      }
+      if (level === "C1") {
+        return "cefr-orange";
+      }
+      if (level === "C2") {
+        return "cefr-red";
+      }
+      return "cefr-neutral";
+    }
+
+    function cefrLabel(entry) {
+      if (!entry.cefrLevel) {
+        return "Not classified";
+      }
+      if (entry.cefrSource === "manual") {
+        return entry.cefrLevel + " (Manual)";
+      }
+      if (entry.cefrSource === "unverified") {
+        return entry.cefrLevel + " (Unverified)";
+      }
+      return entry.cefrLevel + " (Estimated)";
+    }
+
+    function translationKey(word, kind, definition, partOfSpeech) {
+      return JSON.stringify([
+        word.trim().toLowerCase(),
+        kind,
+        (partOfSpeech || "").trim().toLowerCase(),
+        (definition || "").trim().toLowerCase()
+      ]);
+    }
+
+    function cachedTranslation(key) {
+      const cached = translationCache[key];
+      if (!cached || typeof cached.text !== "string" ||
+          !["machine", "manual", "existing"].includes(cached.source)) {
+        return null;
+      }
+      return cached;
+    }
+
+    function storeTranslation(key, text, source, messageElement) {
+      const previous = translationCache[key];
+      translationCache[key] = { text: text, source: source };
+      if (saveStoredObject(TRANSLATION_CACHE_KEY, translationCache, messageElement)) {
+        return true;
+      }
+      if (previous) {
+        translationCache[key] = previous;
+      } else {
+        delete translationCache[key];
+      }
+      return false;
+    }
+
+    function decodeTranslation(text) {
+      const decoder = document.createElement("textarea");
+      decoder.innerHTML = text;
+      return decoder.value.trim();
+    }
+
+    async function fetchChineseTranslation(text) {
+      const url = "https://api.mymemory.translated.net/get?q=" +
+        encodeURIComponent(text) + "&langpair=en|zh-CN";
+      const response = await fetch(url);
+      if (!response.ok) {
+        throw new Error("Translation service returned an error (" + response.status + ").");
+      }
+      const data = await response.json();
+      const translated = data && data.responseData &&
+        typeof data.responseData.translatedText === "string"
+        ? decodeTranslation(data.responseData.translatedText)
+        : "";
+      if (!translated || (data.responseStatus && Number(data.responseStatus) !== 200)) {
+        throw new Error("The translation service did not return a Chinese translation.");
+      }
+      return translated;
+    }
+
+    async function translateEntry(entry) {
+      let requests = 0;
+      let failures = 0;
+      let skipped = 0;
+      let cacheFailures = 0;
+
+      async function translateField(key, currentText, setValue) {
+        const cached = cachedTranslation(key);
+        if (cached) {
+          setValue(cached.text, cached.source);
+          return;
+        }
+        if (translationFailures.has(key)) {
+          failures += 1;
+          return;
+        }
+        if (requests >= MAX_TRANSLATIONS_PER_SEARCH) {
+          skipped += 1;
+          return;
+        }
+
+        if (requests > 0) {
+          await new Promise(function (resolve) { setTimeout(resolve, 180); });
+        }
+        requests += 1;
+        try {
+          const translated = await fetchChineseTranslation(currentText);
+          setValue(translated, "machine");
+          if (!storeTranslation(key, translated, "machine", elements.dictionaryMessage)) {
+            cacheFailures += 1;
+          }
+        } catch (error) {
+          console.error("Chinese translation request failed:", error);
+          translationFailures.add(key);
+          failures += 1;
+        }
+      }
+
+      if (entry.word) {
+        await translateField(
+          translationKey(entry.word, "word", entry.word, ""),
+          entry.word,
+          function (text, source) {
+            entry.translationZh = text;
+            entry.translationSource = source;
+          }
+        );
+      }
+
+      for (let index = 0; index < entry.definitions.length; index += 1) {
+        const definition = entry.definitions[index];
+        if (!definition.definition) {
+          continue;
+        }
+        await translateField(
+          translationKey(entry.word, "definition", definition.definition, definition.partOfSpeech),
+          definition.definition,
+          function (text, source) {
+            definition.translationZh = text;
+            definition.translationSource = source;
+          }
+        );
+      }
+
+      return {
+        requests: requests,
+        failures: failures,
+        skipped: skipped,
+        cacheFailures: cacheFailures
+      };
+    }
+
+    function syncSavedEntryFromLookup(entry) {
+      const saved = vocabulary.find(function (item) {
+        return item.word.toLowerCase() === entry.word.toLowerCase();
+      });
+      if (!saved) {
+        return true;
+      }
+
+      const previous = JSON.parse(JSON.stringify(saved));
+      let changed = false;
+      if (!saved.audioUrl && entry.audioUrl) {
+        saved.audioUrl = entry.audioUrl;
+        changed = true;
+      }
+      if (!saved.translationZh && saved.translationSource !== "manual" && entry.translationZh) {
+        saved.translationZh = entry.translationZh;
+        saved.translationSource = entry.translationSource;
+        changed = true;
+      }
+      entry.definitions.forEach(function (definition) {
+        let savedDefinition = saved.definitions.find(function (item) {
+          return item.definition === definition.definition &&
+            item.partOfSpeech === definition.partOfSpeech;
+        });
+        if (!savedDefinition) {
+          savedDefinition = Object.assign({}, definition);
+          saved.definitions.push(savedDefinition);
+          changed = true;
+        } else {
+          if (!savedDefinition.example && definition.example) {
+            savedDefinition.example = definition.example;
+            changed = true;
+          }
+          if (!savedDefinition.translationZh &&
+              savedDefinition.translationSource !== "manual" &&
+              definition.translationZh) {
+            savedDefinition.translationZh = definition.translationZh;
+            savedDefinition.translationSource = definition.translationSource;
+            changed = true;
+          }
+        }
+      });
+      entry.examples.forEach(function (example) {
+        if (!saved.examples.includes(example)) {
+          saved.examples.push(example);
+          changed = true;
+        }
+      });
+      if (saved.cefrSource !== "manual" && entry.cefrLevel) {
+        saved.cefrLevel = entry.cefrLevel;
+        saved.cefrSource = entry.cefrSource;
+        changed = true;
+      }
+
+      if (changed && !saveVocabulary()) {
+        Object.assign(saved, previous);
+        return false;
+      }
+      return true;
+    }
+
+    function saveVocabulary() {
+      try {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(vocabulary));
+        return true;
+      } catch (error) {
+        console.error("Could not save vocabulary:", error);
+        setMessage(elements.vocabularyMessage, "Could not save changes in this browser. Check available storage space.", "error");
+        return false;
+      }
+    }
+
+    function setMessage(element, text, kind) {
+      element.textContent = text;
+      element.className = "message" + (kind ? " " + kind : "");
+    }
+
+    function addText(parent, tagName, text, className) {
+      const element = document.createElement(tagName);
+      element.textContent = text;
+      if (className) {
+        element.className = className;
+      }
+      parent.appendChild(element);
+      return element;
+    }
+
+    function createButton(text, className, handler) {
+      const button = document.createElement("button");
+      button.type = "button";
+      button.textContent = text;
+      if (className) {
+        button.className = className;
+      }
+      button.addEventListener("click", handler);
+      return button;
+    }
+
+    function switchTab(tabName) {
+      const tabNames = ["dictionary", "vocabulary", "review"];
+      tabNames.forEach(function (name) {
+        const selected = name === tabName;
+        document.getElementById(name + "Tab").setAttribute("aria-selected", String(selected));
+        document.getElementById(name + "Panel").hidden = !selected;
+      });
+
+      if (tabName === "vocabulary") {
+        renderVocabulary();
+      } else if (tabName === "review") {
+        todayReviewExpanded = false;
+        answerRevealed = false;
+        setMessage(elements.reviewMessage, "");
+        renderReview();
+      }
+    }
+
+    document.querySelectorAll('[role="tab"]').forEach(function (tab) {
+      tab.addEventListener("click", function () {
+        switchTab(tab.id.replace("Tab", ""));
+      });
+    });
+
+    elements.todayReviewToggle.addEventListener("click", function () {
+      todayReviewExpanded = !todayReviewExpanded;
+      elements.todayReviewToggle.setAttribute("aria-expanded", String(todayReviewExpanded));
+      elements.todayReviewDetails.hidden = !todayReviewExpanded;
+    });
+
+    function britishPronunciation(item) {
+      const phonetics = Array.isArray(item.phonetics) ? item.phonetics : [];
+      for (let index = 0; index < phonetics.length; index += 1) {
+        const phonetic = phonetics[index];
+        const audio = typeof phonetic.audio === "string" ? phonetic.audio : "";
+        if (/-(uk|gb)(?=\.|$)/i.test(audio)) {
+          return {
+            audioUrl: isSafeAudioUrl(audio) ? audio : ""
+          };
+        }
+      }
+      return { audioUrl: "" };
+    }
+
+    function dictionaryEntryFromApi(data, searchedWord) {
+      const first = data[0];
+      let pronunciation = { audioUrl: "" };
+      const definitions = [];
+      const examples = [];
+      const estimate = estimateCefr(typeof first.word === "string" ? first.word : searchedWord);
+      const word = typeof first.word === "string" ? first.word : searchedWord;
+      const override = cefrOverrides[word.toLowerCase()];
+
+      data.forEach(function (item) {
+        const candidate = britishPronunciation(item);
+        if (!pronunciation.audioUrl && candidate.audioUrl) {
+          pronunciation = candidate;
+        }
+        (Array.isArray(item.meanings) ? item.meanings : []).forEach(function (meaning) {
+          (Array.isArray(meaning.definitions) ? meaning.definitions : []).forEach(function (definition) {
+            const text = typeof definition.definition === "string" ? definition.definition : "";
+            const example = typeof definition.example === "string" ? definition.example : "";
+            if (text) {
+              definitions.push({
+                partOfSpeech: typeof meaning.partOfSpeech === "string" ? meaning.partOfSpeech : "",
+                definition: text,
+                example: example,
+                translationZh: "",
+                translationSource: ""
+              });
+            }
+            if (example && !examples.includes(example)) {
+              examples.push(example);
+            }
+          });
+        });
+      });
+
+      return {
+        word: word,
+        audioUrl: pronunciation.audioUrl,
+        definitions: definitions,
+        examples: examples,
+        translationZh: "",
+        translationSource: "",
+        cefrLevel: override ? override.level : estimate.level,
+        cefrSource: override ? "manual" : estimate.source,
+        addedAt: new Date().toISOString(),
+        reviews: 0,
+        known: 0,
+        unknown: 0
+      };
+    }
+
+    elements.dictionaryForm.addEventListener("submit", async function (event) {
+      event.preventDefault();
+      const searchedWord = elements.dictionaryInput.value.trim();
+      if (!searchedWord) {
+        return;
+      }
+
+      elements.searchButton.disabled = true;
+      elements.dictionaryInput.disabled = true;
+      elements.dictionaryResults.replaceChildren();
+      setMessage(elements.dictionaryMessage, "Searching the free dictionary…");
+
+      try {
+        const response = await fetch(
+          "https://api.dictionaryapi.dev/api/v2/entries/en/" + encodeURIComponent(searchedWord)
+        );
+        if (response.status === 404) {
+          throw new Error("No dictionary entry was found for “" + searchedWord + "”.");
+        }
+        if (!response.ok) {
+          throw new Error("The dictionary service returned an error (" + response.status + "). Please try again.");
+        }
+
+        const data = await response.json();
+        if (!Array.isArray(data) || data.length === 0) {
+          throw new Error("The dictionary returned no information for this word.");
+        }
+
+        lookupResult = dictionaryEntryFromApi(data, searchedWord);
+        renderDictionaryResult(lookupResult);
+        setMessage(elements.dictionaryMessage, "English entry loaded. Getting Chinese translations…");
+        const translationResult = await translateEntry(lookupResult);
+        const savedEntryUpdated = syncSavedEntryFromLookup(lookupResult);
+        renderDictionaryResult(lookupResult);
+        let message = "Dictionary entry loaded; Chinese translations are cached in this browser.";
+        if (!savedEntryUpdated) {
+          message += " Existing saved-word updates could not be stored.";
+        }
+        if (translationResult.failures > 0) {
+          message = "Dictionary entry loaded, but " + translationResult.failures +
+            " translation(s) could not be retrieved.";
+        }
+        if (translationResult.skipped > 0) {
+          message += " Some translations were skipped to limit free requests.";
+        }
+        if (translationResult.cacheFailures > 0) {
+          message += " Some translations could not be cached in browser storage.";
+        }
+        setMessage(
+          elements.dictionaryMessage,
+          message,
+          translationResult.failures || translationResult.cacheFailures || !savedEntryUpdated ? "error" : ""
+        );
+      } catch (error) {
+        console.error("Dictionary search failed:", error);
+        lookupResult = null;
+        setMessage(
+          elements.dictionaryMessage,
+          error instanceof TypeError
+            ? "Could not connect to the free dictionary. Check your internet connection and try again."
+            : error.message,
+          "error"
+        );
+      } finally {
+        elements.searchButton.disabled = false;
+        elements.dictionaryInput.disabled = false;
+      }
+    });
+
+    function renderDictionaryResult(entry) {
+      const card = document.createElement("article");
+      card.className = "result-card";
+
+      const heading = document.createElement("div");
+      heading.className = "result-heading";
+      addText(heading, "h3", entry.word);
+      heading.appendChild(createButton(
+        "Add to My Vocabulary",
+        "",
+        function () {
+          addWordToVocabulary(entry);
+        }
+      ));
+      card.appendChild(heading);
+
+      renderPronunciation(card, entry);
+      renderTranslation(card, entry.translationZh);
+      renderCefrControl(card, entry, function () {
+        renderDictionaryResult(entry);
+      });
+
+      entry.definitions.forEach(function (definition) {
+        const group = document.createElement("div");
+        group.className = "meaning-group";
+        if (definition.partOfSpeech) {
+          addText(group, "p", "Part of speech: " + definition.partOfSpeech, "part-of-speech");
+        }
+        renderTranslation(group, definition.translationZh);
+        if (definition.example) {
+          addText(group, "p", "“" + definition.example + "”", "example");
+        }
+        card.appendChild(group);
+      });
+
+      elements.dictionaryResults.replaceChildren(card);
+    }
+
+    function renderTranslation(parent, value) {
+      if (value) {
+        addText(parent, "p", value, "translation-value");
+      }
+    }
+
+    function renderCefrControl(parent, entry, onChange) {
+      const controls = document.createElement("div");
+      controls.className = "cefr-controls";
+      addText(controls, "span", "CEFR: " + cefrLabel(entry), "cefr-badge " + cefrClass(entry.cefrLevel));
+
+      const select = document.createElement("select");
+      select.setAttribute("aria-label", "Edit CEFR level for " + entry.word);
+      const choices = [
+        ["automatic", "Automatic"],
+        ["unclassified", "Not classified (manual)"],
+        ["A1", "A1"],
+        ["A2", "A2"],
+        ["B1", "B1"],
+        ["B2", "B2"],
+        ["C1", "C1"],
+        ["C2", "C2"]
+      ];
+      choices.forEach(function (choice) {
+        const option = document.createElement("option");
+        option.value = choice[0];
+        option.textContent = choice[1];
+        select.appendChild(option);
+      });
+      select.value = entry.cefrSource === "manual"
+        ? (entry.cefrLevel || "unclassified")
+        : "automatic";
+      select.addEventListener("change", function () {
+        chooseCefrLevel(entry, select.value);
+        onChange();
+      });
+      controls.appendChild(select);
+      parent.appendChild(controls);
+
+    }
+
+    function chooseCefrLevel(entry, choice) {
+      const key = entry.word.toLowerCase();
+      const previousOverrides = Object.assign({}, cefrOverrides);
+      const previousLevel = entry.cefrLevel;
+      const previousSource = entry.cefrSource;
+
+      if (choice === "automatic") {
+        delete cefrOverrides[key];
+        const estimate = estimateCefr(entry.word);
+        entry.cefrLevel = estimate.level;
+        entry.cefrSource = estimate.source;
+      } else {
+        entry.cefrLevel = choice === "unclassified" ? "" : choice;
+        entry.cefrSource = "manual";
+        cefrOverrides[key] = { level: entry.cefrLevel, source: "manual" };
+      }
+
+      if (!saveStoredObject(CEFR_OVERRIDES_KEY, cefrOverrides, elements.dictionaryMessage)) {
+        cefrOverrides = previousOverrides;
+        entry.cefrLevel = previousLevel;
+        entry.cefrSource = previousSource;
+        return;
+      }
+
+      const saved = vocabulary.find(function (item) {
+        return item.word.toLowerCase() === entry.word.toLowerCase();
+      });
+      if (saved) {
+        const savedPreviousLevel = saved.cefrLevel;
+        const savedPreviousSource = saved.cefrSource;
+        saved.cefrLevel = entry.cefrLevel;
+        saved.cefrSource = entry.cefrSource;
+        if (!saveVocabulary()) {
+          saved.cefrLevel = savedPreviousLevel;
+          saved.cefrSource = savedPreviousSource;
+          entry.cefrLevel = previousLevel;
+          entry.cefrSource = previousSource;
+          cefrOverrides = previousOverrides;
+          saveStoredObject(CEFR_OVERRIDES_KEY, cefrOverrides, elements.dictionaryMessage);
+        }
+      }
+    }
+
+    function britishVoice() {
+      if (!("speechSynthesis" in window)) {
+        return null;
+      }
+      return window.speechSynthesis.getVoices().find(function (voice) {
+        return /^en-gb(?:-|$)/i.test(voice.lang);
+      }) || null;
+    }
+
+    function renderPronunciation(parent, entry) {
+      let button = null;
+      if (entry.audioUrl) {
+        button = createButton("🔊 Play British pronunciation", "secondary-button", function () {
+          const audio = new Audio(entry.audioUrl);
+          audio.play().catch(function (error) {
+            console.error("British audio playback failed:", error);
+            setMessage(elements.dictionaryMessage, "Could not play the British audio. Try again or check your connection.", "error");
+          });
+        });
+      } else if (britishVoice()) {
+        button = createButton("🔊 Play British pronunciation", "secondary-button", function () {
+          speakWithBritishVoice(entry.word);
+        });
+      }
+      if (button) {
+        const pronunciation = document.createElement("p");
+        pronunciation.className = "meta";
+        pronunciation.appendChild(button);
+        parent.appendChild(pronunciation);
+      }
+    }
+
+    function speakWithBritishVoice(word) {
+      const voice = britishVoice();
+      if (!voice) {
+        setMessage(elements.dictionaryMessage, "No English (UK) voice is installed in this browser.", "error");
+        return;
+      }
+      const utterance = new SpeechSynthesisUtterance(word);
+      utterance.lang = voice.lang;
+      utterance.voice = voice;
+      window.speechSynthesis.cancel();
+      window.speechSynthesis.speak(utterance);
+    }
+
+    function addWordToVocabulary(entry) {
+      const duplicate = vocabulary.some(function (saved) {
+        return saved.word.toLocaleLowerCase() === entry.word.toLocaleLowerCase();
+      });
+      if (duplicate) {
+        setMessage(elements.dictionaryMessage, "“" + entry.word + "” is already in My Vocabulary.", "error");
+        return;
+      }
+
+      const savedEntry = normalizeSavedEntry(entry);
+      if (!savedEntry) {
+        setMessage(elements.dictionaryMessage, "This dictionary entry could not be saved.", "error");
+        return;
+      }
+
+      vocabulary.unshift(savedEntry);
+      if (saveVocabulary()) {
+        setMessage(elements.dictionaryMessage, "Added “" + savedEntry.word + "” to My Vocabulary.", "success");
+        renderDictionaryResult(lookupResult);
+      } else {
+        vocabulary.shift();
+      }
+    }
+
+    elements.vocabularySearch.addEventListener("input", renderVocabulary);
+    elements.sortWords.addEventListener("change", renderVocabulary);
+    elements.cefrFilter.addEventListener("change", renderVocabulary);
+
+    function renderVocabulary() {
+      const query = elements.vocabularySearch.value.trim().toLocaleLowerCase();
+      const selectedLevel = elements.cefrFilter.value;
+      let visibleWords = vocabulary.filter(function (entry) {
+        const matchesSearch = entry.word.toLocaleLowerCase().includes(query);
+        const matchesLevel = selectedLevel === "all" ||
+          (selectedLevel === "unclassified" ? !entry.cefrLevel : entry.cefrLevel === selectedLevel);
+        return matchesSearch && matchesLevel;
+      });
+
+      if (elements.sortWords.value === "az") {
+        visibleWords.sort(function (a, b) { return a.word.localeCompare(b.word); });
+      } else if (elements.sortWords.value === "za") {
+        visibleWords.sort(function (a, b) { return b.word.localeCompare(a.word); });
+      } else if (elements.sortWords.value === "mostReviewed") {
+        visibleWords.sort(function (a, b) {
+          return (b.reviews - a.reviews) || a.word.localeCompare(b.word);
+        });
+      } else {
+        visibleWords.sort(function (a, b) {
+          return new Date(b.addedAt).getTime() - new Date(a.addedAt).getTime();
+        });
+      }
+
+      elements.vocabularyList.replaceChildren();
+      if (visibleWords.length === 0) {
+        addText(
+          elements.vocabularyList,
+          "p",
+          vocabulary.length === 0
+            ? "Your vocabulary is empty. Search a word in Dictionary and add it here."
+            : "No saved words match your search.",
+          "empty-state"
+        );
+        return;
+      }
+
+      visibleWords.forEach(function (entry) {
+        const card = document.createElement("article");
+        card.className = "word-card";
+        const heading = document.createElement("div");
+        heading.className = "word-heading";
+        addText(heading, "h3", entry.word);
+        const actions = document.createElement("div");
+        actions.className = "word-card-actions";
+        if (entry.audioUrl || britishVoice()) {
+          actions.appendChild(createButton("🔊 Pronounce", "secondary-button", function () {
+            pronounceEntry(entry);
+          }));
+        }
+        if (entry.reviewStatus === "mastered") {
+          actions.appendChild(createButton("Mark Unknown", "secondary-button", function () {
+            recordFsrsReview("Unknown", entry);
+          }));
+        }
+        actions.appendChild(createButton("Delete", "danger-button", function () {
+          deleteWord(entry.word);
+        }));
+        heading.appendChild(actions);
+        card.appendChild(heading);
+        if (entry.reviewStatus === "mastered") {
+          addText(card, "p", "Mastered", "mastered-status");
+        }
+
+        renderCefrControl(card, entry, renderVocabulary);
+        if (entry.definitions.length > 0) {
+          entry.definitions.forEach(function (definition) {
+            if (definition.partOfSpeech) {
+              addText(card, "p", "Part of speech: " + definition.partOfSpeech, "part-of-speech");
+            }
+            if (definition.example) {
+              addText(card, "p", "Example: “" + definition.example + "”");
+            }
+            renderTranslation(card, definition.translationZh);
+          });
+        } else {
+          entry.examples.forEach(function (example) {
+            addText(card, "p", "Example: “" + example + "”");
+          });
+        }
+        renderTranslation(card, entry.translationZh);
+        addText(card, "p", "Reviews: " + entry.reviews + " · Known: " + entry.known + " · Unknown: " + entry.unknown);
+        renderSavedWordEditor(card, entry);
+        elements.vocabularyList.appendChild(card);
+      });
+    }
+
+    function renderSavedWordEditor(card, entry) {
+      const details = document.createElement("details");
+      details.className = "word-editor";
+      addText(details, "summary", "Edit saved word");
+      const form = document.createElement("form");
+      const wordInput = document.createElement("input");
+      wordInput.value = entry.word;
+      wordInput.required = true;
+      addLabeledControl(form, "Word", wordInput);
+
+      let examplesInput = null;
+      if (entry.definitions.length === 0) {
+        examplesInput = document.createElement("textarea");
+        examplesInput.value = entry.examples.join("\n");
+        addLabeledControl(form, "Example sentences (one per line)", examplesInput);
+      }
+
+      const levelSelect = document.createElement("select");
+      [
+        ["automatic", "Automatic"],
+        ["unclassified", "Not classified"],
+        ["A1", "A1"], ["A2", "A2"], ["B1", "B1"],
+        ["B2", "B2"], ["C1", "C1"], ["C2", "C2"]
+      ].forEach(function (choice) {
+        const option = document.createElement("option");
+        option.value = choice[0];
+        option.textContent = choice[1];
+        levelSelect.appendChild(option);
+      });
+      levelSelect.value = entry.cefrSource === "manual"
+        ? (entry.cefrLevel || "unclassified")
+        : "automatic";
+      addLabeledControl(form, "CEFR level", levelSelect);
+
+      const definitionFields = [];
+      entry.definitions.forEach(function (definition, index) {
+        const fieldset = document.createElement("fieldset");
+        fieldset.className = "definition-editor";
+        addText(fieldset, "legend", "Meaning " + (index + 1));
+        const partInput = document.createElement("input");
+        partInput.value = definition.partOfSpeech;
+        addLabeledControl(fieldset, "Part of speech", partInput);
+        const exampleInput = document.createElement("input");
+        exampleInput.value = definition.example;
+        addLabeledControl(fieldset, "Example sentence", exampleInput);
+        form.appendChild(fieldset);
+        definitionFields.push({
+          entry: definition,
+          partOfSpeech: partInput,
+          example: exampleInput
+        });
+      });
+
+      const actions = document.createElement("div");
+      actions.className = "word-card-actions";
+      const saveButton = document.createElement("button");
+      saveButton.type = "submit";
+      saveButton.textContent = "Save changes";
+      actions.appendChild(saveButton);
+      actions.appendChild(createButton("Cancel", "secondary-button", function () {
+        details.open = false;
+        renderVocabulary();
+      }));
+      form.appendChild(actions);
+
+      form.addEventListener("submit", function (event) {
+        event.preventDefault();
+        const newWord = wordInput.value.trim();
+        const duplicate = vocabulary.some(function (saved) {
+          return saved !== entry && saved.word.toLowerCase() === newWord.toLowerCase();
+        });
+        if (duplicate) {
+          setMessage(elements.vocabularyMessage, "That word is already in My Vocabulary.", "error");
+          return;
+        }
+
+        const previous = JSON.parse(JSON.stringify(entry));
+        const previousOverrides = Object.assign({}, cefrOverrides);
+        const oldWordKey = entry.word.toLowerCase();
+        const wordChanged = newWord.toLowerCase() !== oldWordKey;
+        entry.word = newWord;
+        entry.definitions = definitionFields.map(function (fields) {
+          return {
+            partOfSpeech: fields.partOfSpeech.value.trim(),
+            definition: fields.entry.definition,
+            translationZh: fields.entry.translationZh,
+            translationSource: fields.entry.translationSource,
+            example: fields.example.value.trim()
+          };
+        });
+        if (entry.definitions.length > 0) {
+          entry.examples = entry.definitions.map(function (definition) {
+            return definition.example;
+          }).filter(Boolean);
+        } else if (examplesInput) {
+          entry.examples = examplesInput.value.split(/\r?\n/).map(function (example) {
+            return example.trim();
+          }).filter(Boolean);
+        }
+
+        if (levelSelect.value === "automatic") {
+          const estimate = estimateCefr(entry.word);
+          entry.cefrLevel = estimate.level;
+          entry.cefrSource = estimate.source;
+          delete cefrOverrides[oldWordKey];
+          delete cefrOverrides[entry.word.toLowerCase()];
+        } else {
+          entry.cefrLevel = levelSelect.value === "unclassified" ? "" : levelSelect.value;
+          entry.cefrSource = "manual";
+          delete cefrOverrides[oldWordKey];
+          cefrOverrides[entry.word.toLowerCase()] = { level: entry.cefrLevel, source: "manual" };
+        }
+
+        if (!saveStoredObject(CEFR_OVERRIDES_KEY, cefrOverrides, elements.vocabularyMessage)) {
+          Object.assign(entry, previous);
+          cefrOverrides = previousOverrides;
+          return;
+        }
+        if (!saveVocabulary()) {
+          Object.assign(entry, previous);
+          cefrOverrides = previousOverrides;
+          saveStoredObject(CEFR_OVERRIDES_KEY, cefrOverrides, elements.vocabularyMessage);
+          return;
+        }
+
+        let cachesSaved = true;
+        if (entry.translationZh || entry.translationSource) {
+          cachesSaved = storeTranslation(
+            translationKey(entry.word, "word", entry.word, ""),
+            entry.translationZh,
+            entry.translationSource || "manual",
+            elements.vocabularyMessage
+          ) && cachesSaved;
+        }
+        entry.definitions.forEach(function (definition) {
+          if (definition.translationZh || definition.translationSource) {
+            cachesSaved = storeTranslation(
+              translationKey(entry.word, "definition", definition.definition, definition.partOfSpeech),
+              definition.translationZh,
+              definition.translationSource || "manual",
+              elements.vocabularyMessage
+            ) && cachesSaved;
+          }
+        });
+        setMessage(
+          elements.vocabularyMessage,
+          cachesSaved
+            ? "Saved your word changes."
+            : "Saved your word, but could not update one or more translation cache entries.",
+          cachesSaved ? "success" : "error"
+        );
+        renderVocabulary();
+        renderReview();
+      });
+
+      details.appendChild(form);
+      card.appendChild(details);
+    }
+
+    function addLabeledControl(parent, labelText, control) {
+      const label = document.createElement("label");
+      label.appendChild(document.createTextNode(labelText));
+      label.appendChild(control);
+      parent.appendChild(label);
+    }
+
+    function pronounceEntry(entry, reportError) {
+      if (entry.audioUrl) {
+        const audio = new Audio(entry.audioUrl);
+        audio.play().catch(function (error) {
+          console.error("British audio playback failed:", error);
+          const message = "Could not play the British audio. Try again or check your connection.";
+          if (reportError) {
+            reportError(message);
+          } else {
+            setMessage(elements.vocabularyMessage, message, "error");
+          }
+        });
+      } else if (britishVoice()) {
+        speakWithBritishVoice(entry.word);
+      } else {
+        const message = "Could not find a British pronunciation for this word.";
+        if (reportError) {
+          reportError(message);
+        } else {
+          setMessage(elements.vocabularyMessage, message, "error");
+        }
+      }
+    }
+
+    function deleteWord(word) {
+      const existing = vocabulary.findIndex(function (entry) {
+        return entry.word.toLocaleLowerCase() === word.toLocaleLowerCase();
+      });
+      if (existing < 0) {
+        return;
+      }
+
+      const removed = vocabulary.splice(existing, 1)[0];
+      if (saveVocabulary()) {
+        setMessage(elements.vocabularyMessage, "Deleted “" + removed.word + "”.", "success");
+        renderVocabulary();
+        renderReview();
+      } else {
+        vocabulary.splice(existing, 0, removed);
+      }
+    }
+
+    document.getElementById("exportButton").addEventListener("click", function () {
+      const backup = {
+        format: "my-vocabulary-app",
+        version: 1,
+        exportedAt: new Date().toISOString(),
+        words: vocabulary
+      };
+      const blob = new Blob([JSON.stringify(backup, null, 2)], { type: "application/json" });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = "my-vocabulary-backup.json";
+      link.click();
+      URL.revokeObjectURL(url);
+      setMessage(elements.vocabularyMessage, "JSON backup downloaded.", "success");
+    });
+
+    document.getElementById("importButton").addEventListener("click", function () {
+      elements.importFile.click();
+    });
+
+    elements.importFile.addEventListener("change", async function () {
+      const file = elements.importFile.files[0];
+      if (!file) {
+        return;
+      }
+      try {
+        const backup = JSON.parse(await file.text());
+        if (!backup || backup.format !== "my-vocabulary-app" || backup.version !== 1 || !Array.isArray(backup.words)) {
+          throw new Error("This is not a supported vocabulary backup file.");
+        }
+
+        const imported = backup.words.map(normalizeSavedEntry);
+        if (imported.some(function (entry) { return entry === null; })) {
+          throw new Error("The backup contains a word with an invalid format.");
+        }
+
+        const previousVocabulary = vocabulary;
+        vocabulary = vocabulary.slice();
+        let added = 0;
+        imported.forEach(function (entry, index) {
+          const rawEntry = backup.words[index];
+          const existingIndex = vocabulary.findIndex(function (saved) {
+            return saved.word.toLocaleLowerCase() === entry.word.toLocaleLowerCase();
+          });
+          if (existingIndex < 0) {
+            vocabulary.push(entry);
+            added += 1;
+          } else {
+            const existing = vocabulary[existingIndex];
+            const merged = Object.assign({}, existing, entry, {
+              addedAt: existing.addedAt
+            });
+            ["fsrsId", "fsrsVersion", "fsrsCard", "dueAt", "reviewStatus", "masteredAt", "reviewHistory", "reviews", "known", "unknown"]
+              .forEach(function (key) {
+                if (!Object.prototype.hasOwnProperty.call(rawEntry, key)) {
+                  merged[key] = existing[key];
+                }
+              });
+            vocabulary[existingIndex] = merged;
+          }
+        });
+
+        if (!saveVocabulary()) {
+          vocabulary = previousVocabulary;
+          return;
+        }
+        setMessage(elements.vocabularyMessage, "Imported " + added + " new word" + (added === 1 ? "" : "s") + ". Existing words were updated.", "success");
+        renderVocabulary();
+        renderReview();
+      } catch (error) {
+        console.error("Vocabulary import failed:", error);
+        setMessage(elements.vocabularyMessage, error.message || "Could not read this backup file.", "error");
+      } finally {
+        elements.importFile.value = "";
+      }
+    });
+
+    async function getFsrsScheduler() {
+      if (!fsrsModulePromise) {
+        fsrsModulePromise = import(
+          "https://esm.sh/ts-fsrs@" + FSRS_PACKAGE_VERSION + "?bundle&target=es2020"
+        ).catch(function (error) {
+          fsrsLoadError = error;
+          fsrsModulePromise = null;
+          console.error("Could not load ts-fsrs:", error);
+          return null;
+        });
+      }
+
+      const library = await fsrsModulePromise;
+      if (!library || typeof library.DefaultScheduler !== "function" || !library.Rating) {
+        throw new Error(
+          "Could not load ts-fsrs. Check your internet connection; no other scheduler was used."
+        );
+      }
+      fsrsLoadError = null;
+      if (!fsrsSchedulerInstance) {
+        fsrsSchedulerInstance = await library.DefaultScheduler({
+          version: FSRS_MODEL_VERSION,
+          desiredRetention: 0.9,
+          enableShortTerm: true,
+          learningSteps: ["1m", "10m"],
+          relearningSteps: ["10m"],
+          enableFuzz: false,
+          maximumInterval: 36500
+        });
+      }
+      return { library: library, scheduler: fsrsSchedulerInstance };
+    }
+
+    function dateKey(value) {
+      const date = value instanceof Date ? value : new Date(value);
+      if (Number.isNaN(date.getTime())) {
+        return "";
+      }
+      return date.getFullYear() + "-" +
+        String(date.getMonth() + 1).padStart(2, "0") + "-" +
+        String(date.getDate()).padStart(2, "0");
+    }
+
+    function entryDueAt(entry) {
+      return entry.fsrsCard && entry.fsrsCard.dueAt
+        ? entry.fsrsCard.dueAt
+        : (entry.dueAt || entry.addedAt);
+    }
+
+    function isNewToFsrs(entry) {
+      return !entry.fsrsCard || entry.fsrsCard.state === 0;
+    }
+
+    function isReviewActive(entry) {
+      return entry.reviewStatus !== "mastered";
+    }
+
+    function dueEntriesToday() {
+      const now = Date.now();
+      return vocabulary.filter(function (entry) {
+        const dueTime = new Date(entryDueAt(entry)).getTime();
+        return isReviewActive(entry) &&
+          (isNewToFsrs(entry) || (Number.isFinite(dueTime) && dueTime <= now));
+      }).sort(function (a, b) {
+        return new Date(entryDueAt(a)).getTime() - new Date(entryDueAt(b)).getTime();
+      });
+    }
+
+    function scheduleDueRefresh() {
+      if (dueRefreshTimer !== null) {
+        window.clearTimeout(dueRefreshTimer);
+        dueRefreshTimer = null;
+      }
+
+      const now = Date.now();
+      const nextDue = vocabulary.reduce(function (earliest, entry) {
+        if (!isReviewActive(entry) || isNewToFsrs(entry)) {
+          return earliest;
+        }
+        const dueTime = new Date(entryDueAt(entry)).getTime();
+        return Number.isFinite(dueTime) && dueTime > now
+          ? Math.min(earliest, dueTime)
+          : earliest;
+      }, Infinity);
+
+      if (Number.isFinite(nextDue)) {
+        const delay = Math.min(nextDue - now + 50, 2147483000);
+        dueRefreshTimer = window.setTimeout(function () {
+          dueRefreshTimer = null;
+          renderReview();
+        }, Math.max(50, delay));
+      }
+    }
+
+    function reviewedCountToday() {
+      const today = dateKey(new Date());
+      return vocabulary.reduce(function (total, entry) {
+        return total + entry.reviewHistory.filter(function (review) {
+          return dateKey(review.reviewedAt) === today;
+        }).length;
+      }, 0);
+    }
+
+    function formatDueDate(value) {
+      const date = new Date(value);
+      return Number.isNaN(date.getTime()) ? "Unknown date" : date.toLocaleString();
+    }
+
+    function rehydrateFsrsCard(entry, scheduler, now) {
+      if (!entry.fsrsCard) {
+        return scheduler.newCard({ cardId: entry.fsrsId, now: now });
+      }
+      return Object.assign({}, entry.fsrsCard, {
+        dueAt: new Date(entry.fsrsCard.dueAt),
+        lastReviewAt: entry.fsrsCard.lastReviewAt
+          ? new Date(entry.fsrsCard.lastReviewAt)
+          : null
+      });
+    }
+
+    function serializeFsrsCard(card) {
+      return Object.assign({}, card, {
+        dueAt: new Date(card.dueAt).toISOString(),
+        lastReviewAt: card.lastReviewAt
+          ? new Date(card.lastReviewAt).toISOString()
+          : null
+      });
+    }
+
+    function renderReview() {
+      const dueWords = dueEntriesToday();
+      const newWords = vocabulary.filter(function (entry) {
+        return isReviewActive(entry) && isNewToFsrs(entry);
+      }).length;
+      scheduleDueRefresh();
+      elements.todayReviewToggle.setAttribute("aria-expanded", String(todayReviewExpanded));
+      elements.todayReviewDetails.hidden = !todayReviewExpanded;
+      elements.totalVocabularyCount.textContent = String(vocabulary.length);
+      elements.dueTodayCount.textContent = String(dueWords.length);
+      elements.newWordsCount.textContent = String(newWords);
+      elements.reviewedTodayCount.textContent = String(reviewedCountToday());
+
+      elements.todayReviewList.replaceChildren();
+      if (dueWords.length === 0) {
+        addText(elements.todayReviewList, "p", "No words are due today. You are all caught up.", "empty-state");
+      } else {
+        dueWords.forEach(function (entry) {
+          const row = document.createElement("div");
+          row.className = "due-word";
+          const description = document.createElement("div");
+          addText(description, "strong", entry.word);
+          const dueDate = dateKey(entryDueAt(entry));
+          const today = dateKey(new Date());
+          const dueText = isNewToFsrs(entry)
+            ? "New word"
+            : (dueDate < today ? "Overdue · due " : "Due today · ") + formatDueDate(entryDueAt(entry));
+          addText(description, "small", dueText);
+          row.appendChild(description);
+          const reviewButton = createButton("Review", "secondary-button", function () {
+            activeReviewWord = entry.fsrsId;
+            answerRevealed = false;
+            setMessage(elements.reviewMessage, "");
+            renderReview();
+          });
+          reviewButton.disabled = reviewSubmitting;
+          row.appendChild(reviewButton);
+          elements.todayReviewList.appendChild(row);
+        });
+      }
+
+      elements.reviewCard.replaceChildren();
+      elements.reviewRatingActions.replaceChildren();
+      let entry = dueWords.find(function (item) {
+        return item.fsrsId === activeReviewWord;
+      });
+      if (!entry && dueWords.length > 0) {
+        entry = dueWords[0];
+        activeReviewWord = entry.fsrsId;
+        answerRevealed = false;
+      }
+      if (!entry) {
+        activeReviewWord = "";
+        addText(
+          elements.reviewCard,
+          "p",
+          vocabulary.length === 0
+            ? "Add a word to begin reviewing."
+            : "You’re all caught up.",
+          "empty-state"
+        );
+        return;
+      }
+
+      addText(elements.reviewCard, "h3", entry.word, "review-word");
+      if (entry.audioUrl || britishVoice()) {
+        const pronunciationRow = document.createElement("div");
+        pronunciationRow.className = "review-actions";
+        pronunciationRow.appendChild(createButton("🔊 Pronounce", "secondary-button review-pronunciation", function () {
+          pronounceEntry(entry, function (message) {
+            setMessage(elements.reviewMessage, message, "error");
+          });
+        }));
+        elements.reviewCard.appendChild(pronunciationRow);
+      }
+
+      const details = document.createElement("div");
+      details.className = "review-details";
+      details.hidden = !answerRevealed;
+      if (entry.definitions.length > 0) {
+        entry.definitions.forEach(function (definition) {
+          if (definition.partOfSpeech) {
+            addText(details, "p", "Part of speech: " + definition.partOfSpeech, "part-of-speech");
+          }
+          renderTranslation(details, definition.translationZh);
+          if (definition.example) {
+            addText(details, "p", "“" + definition.example + "”", "example");
+          }
+        });
+      }
+      renderTranslation(details, entry.translationZh);
+      addText(details, "span", "CEFR: " + cefrLabel(entry), "cefr-badge " + cefrClass(entry.cefrLevel));
+      if (entry.examples.length > 0 && entry.definitions.length === 0) {
+        entry.examples.forEach(function (example) {
+          addText(details, "p", "“" + example + "”", "example");
+        });
+      }
+      elements.reviewCard.appendChild(details);
+
+      const revealActions = document.createElement("div");
+      revealActions.className = "review-actions review-reveal-actions";
+      const revealButton = createButton(
+        answerRevealed ? "Hide answer" : "Reveal meaning",
+        "secondary-button",
+        function () {
+          answerRevealed = !answerRevealed;
+          renderReview();
+        }
+      );
+      revealActions.appendChild(revealButton);
+      elements.reviewCard.appendChild(revealActions);
+
+      [
+        ["❌ Unknown", "Unknown", "unknown-button"],
+        ["✅ Known", "Known", "success-button"]
+      ].forEach(function (rating) {
+        const button = createButton(rating[0], "review-rating-button " + rating[2], function () {
+          recordFsrsReview(rating[1]);
+        });
+        button.disabled = !answerRevealed || reviewSubmitting;
+        elements.reviewRatingActions.appendChild(button);
+      });
+    }
+
+    async function recordFsrsReview(outcome, selectedEntry) {
+      const entry = selectedEntry || vocabulary.find(function (item) {
+        return item.fsrsId === activeReviewWord;
+      });
+      const isManualReactivation = Boolean(selectedEntry);
+      if (!entry || reviewSubmitting ||
+          (isManualReactivation ? entry.reviewStatus !== "mastered" : !answerRevealed)) {
+        return;
+      }
+
+      reviewSubmitting = true;
+      const messageElement = isManualReactivation
+        ? elements.vocabularyMessage
+        : elements.reviewMessage;
+      setMessage(messageElement, isManualReactivation ? "Adding to review…" : "Scheduling with FSRS…");
+      if (!isManualReactivation) {
+        renderReview();
+      }
+      try {
+        const fsrs = await getFsrsScheduler();
+        const now = new Date();
+        const card = rehydrateFsrsCard(entry, fsrs.scheduler, now);
+        const fsrsRating = outcome === "Known" ? "Good" : "Again";
+        const grade = fsrs.library.Rating[fsrsRating];
+        if (!Number.isInteger(grade)) {
+          throw new Error("The FSRS library does not support the mapped rating.");
+        }
+
+        const result = fsrs.scheduler.review({ card: card, grade: grade, now: now });
+        const serializedCard = serializeFsrsCard(result.card);
+        const historyItem = {
+          reviewedAt: now.toISOString(),
+          rating: outcome,
+          fsrsRating: fsrsRating,
+          action: isManualReactivation ? "manual-reactivation" : "review",
+          ratingValue: grade,
+          dueBefore: new Date(card.dueAt).toISOString(),
+          dueAfter: serializedCard.dueAt,
+          scheduledDays: Number.isFinite(result.card.scheduledDays) ? result.card.scheduledDays : 0,
+          stateBefore: card.state,
+          stateAfter: result.card.state,
+          revlog: JSON.parse(JSON.stringify(result.revlog))
+        };
+        const previous = JSON.parse(JSON.stringify(entry));
+        entry.fsrsId = entry.fsrsId || card.cardId;
+        entry.fsrsVersion = FSRS_MODEL_VERSION;
+        entry.fsrsCard = serializedCard;
+        entry.dueAt = outcome === "Known" ? "" : serializedCard.dueAt;
+        entry.reviewStatus = outcome === "Known" ? "mastered" : "active";
+        entry.masteredAt = outcome === "Known" ? now.toISOString() : "";
+        entry.reviewHistory.push(historyItem);
+        entry.reviews += 1;
+        if (outcome === "Unknown") {
+          entry.unknown += 1;
+        } else {
+          entry.known += 1;
+        }
+
+        if (!saveVocabulary()) {
+          Object.assign(entry, previous);
+          setMessage(messageElement, "The review could not be saved in localStorage.", "error");
+          return;
+        }
+
+        if (!isManualReactivation) {
+          activeReviewWord = "";
+          answerRevealed = false;
+        }
+        setMessage(messageElement, outcome === "Known"
+          ? "Marked Known. Removed from review."
+          : "Marked Unknown. Next review: " + formatDueDate(serializedCard.dueAt) + ".", "success");
+      } catch (error) {
+        console.error("FSRS review failed:", error);
+        setMessage(
+          messageElement,
+          fsrsLoadError
+            ? "Could not load the FSRS library. Check your connection; no alternative schedule was used."
+            : "Could not schedule this review with FSRS: " + error.message,
+          "error"
+        );
+      } finally {
+        reviewSubmitting = false;
+        renderReview();
+        if (isManualReactivation) {
+          renderVocabulary();
+        }
+      }
+    }
+
+    renderVocabulary();
+  </script>
+</body>
+</html>
