@@ -980,6 +980,13 @@
       color: #e1e7f1;
     }
 
+    .user-edited-label {
+      display: block;
+      margin-top: 4px;
+      color: #8d99ad;
+      font-size: 0.82rem;
+    }
+
     .meaning-group,
     .word-editor,
     .review-details,
@@ -1084,7 +1091,7 @@
           <span class="auth-email" id="authUserEmail"></span>
           <button class="secondary-button" id="logoutButton" type="button">Log out</button>
         </div>
-        <p class="sync-status" id="syncStatus" role="status" aria-live="polite">Loading your cloud vocabulary…</p>
+        <p class="sync-status" id="syncStatus" role="status" aria-live="polite" hidden>Loading your cloud vocabulary…</p>
         <div class="local-import-panel" id="localImportPanel" hidden>
           <p id="localImportSummary"></p>
           <div class="local-import-row">
@@ -1299,6 +1306,7 @@
     let syncInProgress = false;
     let syncQueued = false;
     let suppressCloudTracking = false;
+    let syncMetadataSaveFailed = false;
     let authLoadingUserId = "";
     let authLoadToken = 0;
     let lastCloudRefresh = 0;
@@ -1331,6 +1339,7 @@
     let translationRetrying = false;
     let translationRetryable = false;
     let translationLookupPending = false;
+    let activeTabName = "dictionary";
     const ecdictShardCache = new Map();
     let fsrsModulePromise = null;
     let fsrsSchedulerInstance = null;
@@ -1982,6 +1991,14 @@
 
     async function translateEntry(entry) {
       const key = translationKey(entry.word, "word", entry.word, "");
+      const savedEntry = findVocabularyEntry(entry.word);
+      if (savedEntry && savedEntry.translationSource === "manual" &&
+          savedEntry.translationZh.trim()) {
+        entry.translationZh = savedEntry.translationZh;
+        entry.translationSource = "manual";
+        return { ok: true, cacheFailure: false, source: "user-edited" };
+      }
+
       const cached = cachedTranslation(key);
       if (cached && cached.source === "manual" && primaryChineseMeaning(cached.text)) {
         entry.translationZh = cached.text;
@@ -2022,6 +2039,7 @@
     }
 
     function saveVocabulary() {
+      syncMetadataSaveFailed = false;
       try {
         localStorage.setItem(
           cloudUserId ? cloudVocabularyCacheKey(cloudUserId) : STORAGE_KEY,
@@ -2032,6 +2050,7 @@
           trackCloudChanges(vocabularySnapshot, vocabulary);
           metadataSaved = saveCloudSyncMeta(cloudUserId);
           if (!metadataSaved) {
+            syncMetadataSaveFailed = true;
             setSyncStatus("Saved on this device; sync details could not be saved.", true);
           }
         }
@@ -2047,6 +2066,18 @@
         setMessage(elements.vocabularyMessage, "Could not save changes in this browser. Check available storage space.", "error");
         return false;
       }
+    }
+
+    function setVocabularySavedMessage(element, message) {
+      if (syncMetadataSaveFailed) {
+        setMessage(
+          element,
+          "Saved on this device, but cloud sync could not be queued. Export a backup and try again after freeing browser storage.",
+          "error"
+        );
+        return;
+      }
+      setMessage(element, message, "success");
     }
 
     function setSyncStatus(text, isError) {
@@ -2127,7 +2158,8 @@
         id: row.id,
         updatedAt: row.updated_at,
         fingerprint: entryFingerprint(entry),
-        word: entry.word
+        word: entry.word,
+        entry: cloneData(entry)
       };
     }
 
@@ -2154,34 +2186,195 @@
       }) || null;
     }
 
-    function findUntrackedCacheDifferences(cachedEntries, rowsByFsrsId, pendingChanges) {
-      const pendingByFsrsId = pendingChanges || {};
-      return (cachedEntries || []).reduce(function (differences, entry) {
-        const cloudRecord = findCloudRecordForEntry(entry, rowsByFsrsId);
-        const alreadyPending = Object.keys(pendingByFsrsId).some(function (fsrsId) {
-          const pending = pendingByFsrsId[fsrsId];
-          return fsrsId === entry.fsrsId ||
-            (cloudRecord && pending.id &&
-              String(pending.id) === String(cloudRecord.row.id)) ||
-            (pending.entry && typeof pending.entry.word === "string" &&
-              normalizedWordKey(pending.entry.word) === normalizedWordKey(entry.word));
-        });
-        if (!alreadyPending &&
-            (!cloudRecord || entryFingerprint(entry) !== entryFingerprint(cloudRecord.entry))) {
-          differences.push({
-            entry: cloneData(entry),
-            row: cloudRecord ? cloneData(cloudRecord.row) : null
+    function sameValue(left, right) {
+      return stableStringify(left) === stableStringify(right);
+    }
+
+    function mergedReviewHistory(localHistory, cloudHistory) {
+      const events = new Map();
+      (localHistory || []).concat(cloudHistory || []).forEach(function (item) {
+        events.set(stableStringify(item), cloneData(item));
+      });
+      return Array.from(events.values()).sort(function (left, right) {
+        const byDate = Date.parse(left.reviewedAt) - Date.parse(right.reviewedAt);
+        return byDate || stableStringify(left).localeCompare(stableStringify(right));
+      });
+    }
+
+    function isHistorySubset(subset, superset) {
+      const supersetKeys = new Set((superset || []).map(stableStringify));
+      return (subset || []).every(function (item) {
+        return supersetKeys.has(stableStringify(item));
+      });
+    }
+
+    function mergeSyncEntries(baseEntry, localEntry, cloudEntry) {
+      const base = baseEntry ? normalizeSavedEntry(baseEntry) : null;
+      const local = normalizeSavedEntry(localEntry);
+      const cloud = normalizeSavedEntry(cloudEntry);
+      if (!local || !cloud) {
+        throw new Error("Cannot merge invalid local or cloud vocabulary data.");
+      }
+
+      const merged = cloneData(cloud);
+      const conflicts = [];
+      const scheduleFields = ["fsrsVersion", "fsrsCard", "reviewStatus", "masteredAt", "dueAt"];
+
+      function mergeField(field) {
+        const localValue = local[field];
+        const cloudValue = cloud[field];
+        const baseValue = base ? base[field] : undefined;
+        if (sameValue(localValue, cloudValue)) {
+          merged[field] = cloneData(localValue);
+        } else if (base && sameValue(localValue, baseValue)) {
+          merged[field] = cloneData(cloudValue);
+        } else if (base && sameValue(cloudValue, baseValue)) {
+          merged[field] = cloneData(localValue);
+        } else if (base) {
+          conflicts.push(field);
+          merged[field] = cloneData(cloudValue);
+        } else {
+          merged[field] = cloneData(cloudValue);
+        }
+      }
+
+      const localTranslation = {
+        translationZh: local.translationZh,
+        translationSource: local.translationSource
+      };
+      const cloudTranslation = {
+        translationZh: cloud.translationZh,
+        translationSource: cloud.translationSource
+      };
+      const baseTranslation = base && {
+        translationZh: base.translationZh,
+        translationSource: base.translationSource
+      };
+      function meaningPriority(source) {
+        return source === "manual" ? 2 : source === "existing" ? 1 : 0;
+      }
+      if (sameValue(localTranslation, cloudTranslation)) {
+        Object.assign(merged, localTranslation);
+      } else if (meaningPriority(local.translationSource) > meaningPriority(cloud.translationSource)) {
+        Object.assign(merged, localTranslation);
+      } else if (meaningPriority(cloud.translationSource) > meaningPriority(local.translationSource)) {
+        Object.assign(merged, cloudTranslation);
+      } else if (base && sameValue(localTranslation, baseTranslation)) {
+        Object.assign(merged, cloudTranslation);
+      } else if (base && sameValue(cloudTranslation, baseTranslation)) {
+        Object.assign(merged, localTranslation);
+      } else if (base ||
+          (meaningPriority(local.translationSource) > 0 && meaningPriority(cloud.translationSource) > 0)) {
+        conflicts.push("translationZh", "translationSource");
+        Object.assign(merged, cloudTranslation);
+      } else {
+        Object.assign(merged, cloudTranslation);
+      }
+
+      const localCefr = { cefrLevel: local.cefrLevel, cefrSource: local.cefrSource };
+      const cloudCefr = { cefrLevel: cloud.cefrLevel, cefrSource: cloud.cefrSource };
+      const baseCefr = base && { cefrLevel: base.cefrLevel, cefrSource: base.cefrSource };
+      if (sameValue(localCefr, cloudCefr)) {
+        Object.assign(merged, localCefr);
+      } else if (local.cefrSource === "manual" && cloud.cefrSource !== "manual") {
+        Object.assign(merged, localCefr);
+      } else if (cloud.cefrSource === "manual" && local.cefrSource !== "manual") {
+        Object.assign(merged, cloudCefr);
+      } else if (base && sameValue(localCefr, baseCefr)) {
+        Object.assign(merged, cloudCefr);
+      } else if (base && sameValue(cloudCefr, baseCefr)) {
+        Object.assign(merged, localCefr);
+      } else if (base || (local.cefrSource === "manual" && cloud.cefrSource === "manual")) {
+        conflicts.push("cefrLevel", "cefrSource");
+        Object.assign(merged, cloudCefr);
+      } else {
+        Object.assign(merged, cloudCefr);
+      }
+
+      const localHistory = local.reviewHistory || [];
+      const cloudHistory = cloud.reviewHistory || [];
+      const history = mergedReviewHistory(localHistory, cloudHistory);
+      merged.reviewHistory = history;
+
+      if (base) {
+        scheduleFields.forEach(mergeField);
+      } else {
+        const localIsOlder = isHistorySubset(localHistory, cloudHistory);
+        const cloudIsOlder = isHistorySubset(cloudHistory, localHistory);
+        if (localIsOlder && !cloudIsOlder) {
+          scheduleFields.forEach(function (field) {
+            merged[field] = cloneData(cloud[field]);
+          });
+        } else if (cloudIsOlder && !localIsOlder) {
+          scheduleFields.forEach(function (field) {
+            merged[field] = cloneData(local[field]);
+          });
+        } else {
+          scheduleFields.forEach(function (field) {
+            if (!sameValue(local[field], cloud[field])) {
+              conflicts.push(field);
+              merged[field] = cloneData(cloud[field]);
+            }
           });
         }
-        return differences;
-      }, []);
+      }
+
+      const baseHistoryKeys = new Set((base && base.reviewHistory || []).map(stableStringify));
+      const addedEvents = history.filter(function (item) {
+        return !baseHistoryKeys.has(stableStringify(item));
+      });
+      merged.reviews = Math.max(
+        local.reviews,
+        cloud.reviews,
+        (base ? base.reviews : 0) + addedEvents.length,
+        history.length
+      );
+      merged.known = Math.max(
+        local.known,
+        cloud.known,
+        (base ? base.known : 0) + addedEvents.filter(function (item) { return item.rating === "Known"; }).length
+      );
+      merged.unknown = Math.max(
+        local.unknown,
+        cloud.unknown,
+        (base ? base.unknown : 0) + addedEvents.filter(function (item) { return item.rating === "Unknown"; }).length
+      );
+
+      const specialFields = new Set([
+        "translationZh", "translationSource", "cefrLevel", "cefrSource",
+        "reviewHistory", "reviews", "known", "unknown"
+      ].concat(scheduleFields));
+      const remainingFields = new Set(
+        Object.keys(merged).concat(Object.keys(local), base ? Object.keys(base) : [])
+      );
+      specialFields.forEach(function (field) { remainingFields.delete(field); });
+      remainingFields.forEach(mergeField);
+      return {
+        entry: normalizeSavedEntry(merged),
+        conflicts: Array.from(new Set(conflicts))
+      };
+    }
+
+    function mergeEntryWithConflictChoice(mergedEntry, selectedEntry, conflictingFields) {
+      const result = cloneData(mergedEntry);
+      conflictingFields.forEach(function (field) {
+        result[field] = cloneData(selectedEntry[field]);
+      });
+      return normalizeSavedEntry(result);
     }
 
     function showCloudCacheRecovery() {
       const count = cloudCacheRecovery.entries.length;
-      elements.syncConflictMessage.textContent =
-        count + " local word change" + (count === 1 ? " differs" : "s differ") +
-        " from cloud without saved sync progress. Choose “Keep this device’s version” to upload only these differences while preserving cloud-only words, or “Use cloud version” to discard only these local differences. Export a JSON backup first if you need both.";
+      const fieldConflicts = cloudCacheRecovery.entries.some(function (difference) {
+        return difference.mergeResult && difference.mergeResult.conflicts.length > 0;
+      });
+      elements.syncConflictMessage.textContent = fieldConflicts
+        ? count + " word" + (count === 1 ? " has" : "s have") +
+          " competing changes to the same field. Non-conflicting edits and review history are preserved. Choose which value to keep for the conflicting fields."
+        : count + " local word change" + (count === 1 ? " differs" : "s differ") +
+          " from cloud without saved sync progress. Choose “Keep this device’s version” to upload only these differences while preserving cloud-only words, or “Use cloud version” to discard only these local differences. Export a JSON backup first if you need both.";
+      elements.useCloudButton.textContent = fieldConflicts ? "Use cloud for conflicts" : "Use cloud version";
+      elements.keepLocalButton.textContent = fieldConflicts ? "Keep local for conflicts" : "Keep this device’s version";
       elements.syncConflictPanel.hidden = false;
       elements.importLocalButton.disabled = true;
       setSyncStatus("Sync paused until you resolve the local cache difference.", true);
@@ -2196,9 +2389,11 @@
       }));
       cloudCacheRecovery.entries = cloudCacheRecovery.entries.map(function (difference) {
         const current = currentById.get(difference.entry.fsrsId);
-        return current
-          ? { entry: cloneData(current), row: difference.row }
-          : null;
+        if (!current) {
+          return null;
+        }
+        difference.entry = cloneData(current);
+        return difference;
       }).filter(Boolean);
       if (cloudCacheRecovery.entries.length === 0) {
         cloudCacheRecovery = null;
@@ -2236,6 +2431,7 @@
             id: (pending && pending.id) || (baseline && baseline.id),
             baseUpdatedAt: (pending && pending.baseUpdatedAt) || (baseline && baseline.updatedAt),
             baselineFingerprint: (pending && pending.baselineFingerprint) || (baseline && baseline.fingerprint),
+            baselineEntry: cloneData((pending && pending.baselineEntry) || (baseline && baseline.entry) || previous),
             entry: null
           };
         }
@@ -2256,6 +2452,8 @@
             (cloudRow && cloudRow.row.updated_at) || null,
           baselineFingerprint: (pending && pending.baselineFingerprint) || baseline.fingerprint ||
             (cloudRow && entryFingerprint(cloudRow.entry)) || null,
+          baselineEntry: cloneData((pending && pending.baselineEntry) || baseline.entry ||
+            (cloudRow && cloudRow.entry) || previous || null),
           entry: cloneData(entry)
         };
       });
@@ -2314,21 +2512,43 @@
       cloudRowsByFsrsId.set(fsrsId, { row: row, entry: cloudRowToEntry(row) });
     }
 
-    function showCloudConflict(fsrsId, pending, row, reason) {
+    function showCloudConflict(fsrsId, pending, row, reason, mergeResult) {
       cloudConflict = {
         fsrsId: fsrsId,
         pending: cloneData(pending),
-        row: row ? cloneData(row) : null
+        row: row ? cloneData(row) : null,
+        mergeResult: mergeResult ? cloneData(mergeResult) : null
       };
       const word = pending.entry
         ? pending.entry.word
         : ((syncMeta.rows[fsrsId] && syncMeta.rows[fsrsId].word) || "a saved word");
-      let message = "“" + word + "” " + reason + " Choose which version to keep.";
+      const fieldLabels = {
+        translationZh: "Chinese meaning",
+        translationSource: "Chinese meaning",
+        fsrsVersion: "review schedule",
+        fsrsCard: "review schedule",
+        reviewStatus: "Known/Unknown status",
+        masteredAt: "Known/Unknown status",
+        dueAt: "next review date",
+        cefrLevel: "CEFR level",
+        cefrSource: "CEFR level"
+      };
+      const conflictLabels = mergeResult
+        ? Array.from(new Set(mergeResult.conflicts.map(function (field) {
+            return fieldLabels[field] || "vocabulary details";
+          }))).join(", ")
+        : "";
+      let message = mergeResult
+        ? "“" + word + "” has competing changes to " + conflictLabels +
+          ". Non-conflicting edits and all review history are preserved. Choose which values to keep for those fields."
+        : "“" + word + "” " + reason + " Choose which version to keep.";
       if (reason.indexOf("already exists") >= 0) {
         message += " Keeping this device’s version replaces the cloud copy, including its Chinese meaning and review history. Export a JSON backup before proceeding.";
       } else if (!row) {
         message += " Choosing the cloud version removes this local copy.";
       }
+      elements.useCloudButton.textContent = mergeResult ? "Use cloud for conflicts" : "Use cloud version";
+      elements.keepLocalButton.textContent = mergeResult ? "Keep local for conflicts" : "Keep this device’s version";
       elements.syncConflictMessage.textContent = message;
       elements.syncConflictPanel.hidden = false;
       setSyncStatus("Sync paused until you resolve a conflict.", true);
@@ -2386,6 +2606,11 @@
           "Cloud sync did not complete or its result could not be confirmed. Local changes are retained: " +
             error.message,
           true
+        );
+        setMessage(
+          activePanelMessageElement(),
+          "Cloud save failed. Your changes remain on this device; please check your connection and try again.",
+          "error"
         );
       }).finally(function () {
         syncInProgress = false;
@@ -2463,31 +2688,35 @@
           continue;
         }
 
-        const entry = normalizeSavedEntry(pending.entry);
+        let entry = normalizeSavedEntry(pending.entry);
         if (!entry) {
           throw new Error("A pending local change has an invalid word.");
         }
         let row = null;
         if (pending.id) {
-          let payload = cloudEntryPayload(entry, false, pending.baseUpdatedAt);
-          let update = await supabaseClient
-            .from("vocabulary")
-            .update(payload)
-            .eq("id", pending.id)
-            .eq("user_id", userId)
-            .eq("updated_at", pending.baseUpdatedAt)
-            .select(CLOUD_ROW_COLUMNS);
-          if (cloudUserId !== userId) {
-            return;
-          }
-          if (update.error) {
-            if (update.error.code === "23505") {
-              throw new Error("That word already exists in your cloud vocabulary. Your local change is saved; rename it before syncing.");
+          for (let attempt = 0; attempt < 3 && !row; attempt += 1) {
+            const payload = cloudEntryPayload(entry, false, pending.baseUpdatedAt);
+            const update = await supabaseClient
+              .from("vocabulary")
+              .update(payload)
+              .eq("id", pending.id)
+              .eq("user_id", userId)
+              .eq("updated_at", pending.baseUpdatedAt)
+              .select(CLOUD_ROW_COLUMNS);
+            if (cloudUserId !== userId) {
+              return;
             }
-            throw update.error;
-          }
-          row = update.data && update.data[0];
-          if (!row) {
+            if (update.error) {
+              if (update.error.code === "23505") {
+                throw new Error("That word already exists in your cloud vocabulary. Your local change is saved; rename it before syncing.");
+              }
+              throw update.error;
+            }
+            row = update.data && update.data[0];
+            if (row) {
+              break;
+            }
+
             const latest = await fetchCloudRowById(pending.id, userId);
             if (cloudUserId !== userId) {
               return;
@@ -2499,36 +2728,59 @@
                   delete syncMeta.rows[cloudFsrsId];
                 }
               });
-            }
-            if (latest && pending.baselineFingerprint &&
-                entryFingerprint(cloudRowToEntry(latest)) === pending.baselineFingerprint) {
-              pending.baseUpdatedAt = latest.updated_at;
-              if (!saveCloudSyncMeta(userId)) {
-                throw new Error("Could not save refreshed sync details; the cloud word was not changed.");
-              }
-              payload = cloudEntryPayload(entry, false, pending.baseUpdatedAt);
-              update = await supabaseClient
-                .from("vocabulary")
-                .update(payload)
-                .eq("id", pending.id)
-                .eq("user_id", userId)
-                .eq("updated_at", pending.baseUpdatedAt)
-                .select(CLOUD_ROW_COLUMNS);
-              if (cloudUserId !== userId) {
-                return;
-              }
-              if (update.error) {
-                if (update.error.code === "23505") {
-                  throw new Error("That word already exists in your cloud vocabulary. Your local change is saved; rename it before syncing.");
-                }
-                throw update.error;
-              }
-              row = update.data && update.data[0];
-            }
-            if (!row) {
-              showCloudConflict(fsrsId, pending, latest, "was changed or removed on another device.");
+              showCloudConflict(fsrsId, pending, null, "was removed on another device.");
               return;
             }
+
+            const latestEntry = cloudRowToEntry(latest);
+            const baselineEntry = pending.baselineEntry ||
+              (syncMeta.rows[fsrsId] && syncMeta.rows[fsrsId].entry) || null;
+            const mergeResult = !baselineEntry && pending.baselineFingerprint &&
+                entryFingerprint(latestEntry) === pending.baselineFingerprint
+              ? { entry: entry, conflicts: [] }
+              : mergeSyncEntries(baselineEntry, entry, latestEntry);
+            if (mergeResult.conflicts.length > 0) {
+              showCloudConflict(
+                fsrsId,
+                pending,
+                latest,
+                "has competing edits on another device.",
+                {
+                  entry: mergeResult.entry,
+                  conflicts: mergeResult.conflicts,
+                  localEntry: cloneData(entry),
+                  cloudEntry: cloneData(latestEntry)
+                }
+              );
+              return;
+            }
+
+            entry = mergeResult.entry;
+            pending.entry = cloneData(entry);
+            pending.id = latest.id;
+            pending.baseUpdatedAt = latest.updated_at;
+            pending.baselineFingerprint = entryFingerprint(latestEntry);
+            pending.baselineEntry = cloneData(latestEntry);
+            syncMeta.rows[fsrsId] = cloudRowMetadata(latest);
+            const localIndex = vocabulary.findIndex(function (item) {
+              return item.fsrsId === fsrsId ||
+                normalizedWordKey(item.word) === normalizedWordKey(entry.word);
+            });
+            if (localIndex >= 0) {
+              vocabulary[localIndex] = cloneData(entry);
+            } else {
+              vocabulary.push(cloneData(entry));
+            }
+            if (!saveUserVocabularyCache() || !saveCloudSyncMeta(userId)) {
+              throw new Error("Could not save merged sync progress locally; the cloud word was not changed.");
+            }
+            vocabularySnapshot = cloneData(vocabulary);
+            if (entryFingerprint(entry) === entryFingerprint(latestEntry)) {
+              row = latest;
+            }
+          }
+          if (!row) {
+            throw new Error("The cloud word kept changing during sync. Your local changes are retained; try again shortly.");
           }
         } else {
           const duplicate = Array.from(cloudRowsByFsrsId.values()).find(function (cloudRecord) {
@@ -2580,12 +2832,14 @@
           currentPending.id = row.id;
           currentPending.baseUpdatedAt = row.updated_at;
           currentPending.baselineFingerprint = entryFingerprint(savedEntry);
+          currentPending.baselineEntry = cloneData(savedEntry);
         } else if (!vocabulary.some(function (item) { return item.fsrsId === fsrsId; })) {
           syncMeta.pending[fsrsId] = {
             type: "delete",
             id: row.id,
             baseUpdatedAt: row.updated_at,
             baselineFingerprint: entryFingerprint(savedEntry),
+            baselineEntry: cloneData(savedEntry),
             entry: null
           };
         } else {
@@ -2594,6 +2848,7 @@
             id: row.id,
             baseUpdatedAt: row.updated_at,
             baselineFingerprint: entryFingerprint(savedEntry),
+            baselineEntry: cloneData(savedEntry),
             entry: cloneData(vocabulary.find(function (item) { return item.fsrsId === fsrsId; }))
           };
         }
@@ -2729,11 +2984,46 @@
         return;
       }
       const recovery = cloudCacheRecovery;
+      const hadFieldConflicts = recovery.entries.some(function (difference) {
+        return difference.mergeResult && difference.mergeResult.conflicts.length > 0;
+      });
       recovery.entries.forEach(function (difference) {
         const localIndex = vocabulary.findIndex(function (entry) {
           return entry.fsrsId === difference.entry.fsrsId ||
             normalizedWordKey(entry.word) === normalizedWordKey(difference.entry.word);
         });
+        if (difference.mergeResult && difference.row) {
+          const currentEntry = localIndex >= 0 ? vocabulary[localIndex] : difference.entry;
+          const resolvedEntry = mergeEntryWithConflictChoice(
+            currentEntry,
+            difference.mergeResult.cloudEntry,
+            difference.mergeResult.conflicts
+          );
+          const cloudEntry = cloudRowToEntry(difference.row);
+          if (localIndex >= 0) {
+            vocabulary[localIndex] = resolvedEntry;
+          } else {
+            vocabulary.push(resolvedEntry);
+          }
+          const pendingKey = resolvedEntry.fsrsId;
+          if (difference.entry.fsrsId !== pendingKey) {
+            delete syncMeta.pending[difference.entry.fsrsId];
+          }
+          saveCloudRowBaseline(pendingKey, difference.row);
+          if (entryFingerprint(resolvedEntry) === entryFingerprint(cloudEntry)) {
+            delete syncMeta.pending[pendingKey];
+          } else {
+            syncMeta.pending[pendingKey] = {
+              type: "upsert",
+              id: difference.row.id,
+              baseUpdatedAt: difference.row.updated_at,
+              baselineFingerprint: entryFingerprint(cloudEntry),
+              baselineEntry: cloneData(cloudEntry),
+              entry: cloneData(resolvedEntry)
+            };
+          }
+          return;
+        }
         if (difference.row) {
           const cloudEntry = cloudRowToEntry(difference.row);
           if (localIndex >= 0) {
@@ -2760,7 +3050,9 @@
       renderVocabulary();
       renderReview();
       updateLocalImportSummary();
-      setSyncStatus("Using cloud versions for the unsynced local differences.", false);
+      setSyncStatus(hadFieldConflicts
+        ? "Using cloud values for conflicting fields; non-conflicting edits and review history are preserved."
+        : "Using cloud versions for the unsynced local differences.", false);
       queueCloudSync();
     }
 
@@ -2769,24 +3061,56 @@
         return;
       }
       const recovery = cloudCacheRecovery;
+      const hadFieldConflicts = recovery.entries.some(function (difference) {
+        return difference.mergeResult && difference.mergeResult.conflicts.length > 0;
+      });
       recovery.entries.forEach(function (difference) {
         const currentEntry = vocabulary.find(function (entry) {
           return entry.fsrsId === difference.entry.fsrsId;
         }) || difference.entry;
+        const resolvedEntry = difference.mergeResult
+          ? mergeEntryWithConflictChoice(
+            currentEntry,
+            difference.mergeResult.localEntry,
+            difference.mergeResult.conflicts
+          )
+          : currentEntry;
         const remoteEntry = difference.row ? cloudRowToEntry(difference.row) : null;
-        if (remoteEntry && remoteEntry.fsrsId !== currentEntry.fsrsId) {
+        if (remoteEntry && remoteEntry.fsrsId !== resolvedEntry.fsrsId) {
           delete syncMeta.rows[remoteEntry.fsrsId];
           cloudRowsByFsrsId.delete(remoteEntry.fsrsId);
         }
-        syncMeta.pending[currentEntry.fsrsId] = {
-          type: "upsert",
-          id: difference.row ? difference.row.id : null,
-          baseUpdatedAt: difference.row ? difference.row.updated_at : null,
-          baselineFingerprint: remoteEntry ? entryFingerprint(remoteEntry) : null,
-          entry: cloneData(currentEntry)
-        };
+        const localIndex = vocabulary.findIndex(function (entry) {
+          return entry.fsrsId === currentEntry.fsrsId;
+        });
+        if (localIndex >= 0) {
+          vocabulary[localIndex] = resolvedEntry;
+        } else {
+          vocabulary.push(resolvedEntry);
+        }
         if (remoteEntry) {
-          syncMeta.rows[currentEntry.fsrsId] = cloudRowMetadata(difference.row);
+          syncMeta.rows[resolvedEntry.fsrsId] = cloudRowMetadata(difference.row);
+          if (entryFingerprint(resolvedEntry) === entryFingerprint(remoteEntry)) {
+            delete syncMeta.pending[resolvedEntry.fsrsId];
+          } else {
+            syncMeta.pending[resolvedEntry.fsrsId] = {
+              type: "upsert",
+              id: difference.row.id,
+              baseUpdatedAt: difference.row.updated_at,
+              baselineFingerprint: entryFingerprint(remoteEntry),
+              baselineEntry: cloneData(remoteEntry),
+              entry: cloneData(resolvedEntry)
+            };
+          }
+        } else {
+          syncMeta.pending[resolvedEntry.fsrsId] = {
+            type: "upsert",
+            id: null,
+            baseUpdatedAt: null,
+            baselineFingerprint: null,
+            baselineEntry: null,
+            entry: cloneData(resolvedEntry)
+          };
         }
       });
 
@@ -2803,7 +3127,72 @@
       renderVocabulary();
       renderReview();
       updateLocalImportSummary();
-      setSyncStatus("Keeping local changes; cloud-only words will be preserved.", false);
+      setSyncStatus(hadFieldConflicts
+        ? "Keeping local values for conflicting fields; non-conflicting cloud changes and review history are preserved."
+        : "Keeping local changes; cloud-only words will be preserved.", false);
+      queueCloudSync();
+    }
+
+    function finishMergedCloudConflict(conflict, choice) {
+      const mergeResult = conflict.mergeResult;
+      const selectedEntry = choice === "cloud"
+        ? mergeResult.cloudEntry
+        : mergeResult.localEntry;
+      const resolvedEntry = mergeEntryWithConflictChoice(
+        mergeResult.entry,
+        selectedEntry,
+        mergeResult.conflicts
+      );
+      const row = conflict.row;
+      const cloudEntry = row ? cloudRowToEntry(row) : null;
+      const localIndex = vocabulary.findIndex(function (entry) {
+        return entry.fsrsId === conflict.fsrsId ||
+          normalizedWordKey(entry.word) === normalizedWordKey(resolvedEntry.word);
+      });
+      if (localIndex >= 0) {
+        vocabulary[localIndex] = resolvedEntry;
+      } else {
+        vocabulary.push(resolvedEntry);
+      }
+
+      delete syncMeta.pending[conflict.fsrsId];
+      if (row) {
+        saveCloudRowBaseline(resolvedEntry.fsrsId, row);
+        if (entryFingerprint(resolvedEntry) !== entryFingerprint(cloudEntry)) {
+          syncMeta.pending[resolvedEntry.fsrsId] = {
+            type: "upsert",
+            id: row.id,
+            baseUpdatedAt: row.updated_at,
+            baselineFingerprint: entryFingerprint(cloudEntry),
+            baselineEntry: cloneData(cloudEntry),
+            entry: cloneData(resolvedEntry)
+          };
+        }
+      } else {
+        syncMeta.pending[resolvedEntry.fsrsId] = {
+          type: "upsert",
+          id: null,
+          baseUpdatedAt: null,
+          baselineFingerprint: null,
+          baselineEntry: null,
+          entry: cloneData(resolvedEntry)
+        };
+      }
+
+      cloudConflict = null;
+      elements.syncConflictPanel.hidden = true;
+      const cacheSaved = saveUserVocabularyCache();
+      vocabularySnapshot = cloneData(vocabulary);
+      const metadataSaved = saveCloudSyncMeta(cloudUserId);
+      renderVocabulary();
+      renderReview();
+      if (!cacheSaved || !metadataSaved) {
+        setSyncStatus("The selected values remain in this session, but local sync progress could not be saved.", true);
+        return;
+      }
+      setSyncStatus(choice === "cloud"
+        ? "Using cloud values for the conflicting fields; other changes and review history are preserved."
+        : "Keeping local values for the conflicting fields; other changes and review history are preserved.", false);
       queueCloudSync();
     }
 
@@ -2816,6 +3205,10 @@
         return;
       }
       const conflict = cloudConflict;
+      if (conflict.mergeResult) {
+        finishMergedCloudConflict(conflict, "cloud");
+        return;
+      }
       const row = conflict.row;
       const localIndex = vocabulary.findIndex(function (entry) {
         return entry.fsrsId === conflict.fsrsId ||
@@ -2859,6 +3252,10 @@
         return;
       }
       const conflict = cloudConflict;
+      if (conflict.mergeResult) {
+        finishMergedCloudConflict(conflict, "local");
+        return;
+      }
       const pending = syncMeta.pending[conflict.fsrsId];
       const row = conflict.row;
       if (!pending) {
@@ -2878,11 +3275,13 @@
         pending.id = row.id;
         pending.baseUpdatedAt = row.updated_at;
         pending.baselineFingerprint = entryFingerprint(remoteEntry);
+        pending.baselineEntry = cloneData(remoteEntry);
         syncMeta.rows[conflict.fsrsId] = cloudRowMetadata(row);
       } else {
         pending.id = null;
         pending.baseUpdatedAt = null;
         pending.baselineFingerprint = null;
+        pending.baselineEntry = null;
       }
       cloudConflict = null;
       elements.syncConflictPanel.hidden = true;
@@ -2897,70 +3296,167 @@
     function reconcileCloudRows(rows, cachedEntries) {
       const remoteMap = mapCloudRows(rows);
       cloudRowsByFsrsId = remoteMap;
-      const recoveryEntries = findUntrackedCacheDifferences(
-        cachedEntries,
-        remoteMap,
-        syncMeta.pending
-      );
-      cloudCacheRecovery = recoveryEntries.length > 0
-        ? { entries: recoveryEntries }
-        : null;
-      const pendingIds = Object.keys(syncMeta.pending);
-      const hasPending = pendingIds.length > 0;
-      const cachedById = new Map((cachedEntries || []).map(function (entry) {
-        return [entry.fsrsId, entry];
-      }));
+      const localEntries = cachedEntries || [];
+      const usedLocalEntries = new Set();
+      const recoveryEntries = [];
       const merged = new Map();
+      const nextRows = {};
+
+      function findLocalEntry(record) {
+        return localEntries.find(function (entry) {
+          return !usedLocalEntries.has(entry) && entry.fsrsId === record.entry.fsrsId;
+        }) || localEntries.find(function (entry) {
+          return !usedLocalEntries.has(entry) &&
+            normalizedWordKey(entry.word) === normalizedWordKey(record.entry.word);
+        }) || null;
+      }
+
+      function findPending(fsrsId, record) {
+        if (syncMeta.pending[fsrsId]) {
+          return { key: fsrsId, value: syncMeta.pending[fsrsId] };
+        }
+        return Object.keys(syncMeta.pending).map(function (key) {
+          return { key: key, value: syncMeta.pending[key] };
+        }).find(function (item) {
+          return item.value.id && String(item.value.id) === String(record.row.id);
+        }) || Object.keys(syncMeta.pending).map(function (key) {
+          return { key: key, value: syncMeta.pending[key] };
+        }).find(function (item) {
+          return item.value.entry && normalizedWordKey(item.value.entry.word) ===
+            normalizedWordKey(record.entry.word);
+        }) || null;
+      }
+
+      function findBaseline(fsrsId, row) {
+        if (syncMeta.rows[fsrsId]) {
+          return syncMeta.rows[fsrsId];
+        }
+        return Object.keys(syncMeta.rows).map(function (key) {
+          return syncMeta.rows[key];
+        }).find(function (baseline) {
+          return baseline.id && String(baseline.id) === String(row.id);
+        }) || null;
+      }
+
       remoteMap.forEach(function (record, remoteFsrsId) {
-        let pendingFsrsId = remoteFsrsId;
-        let pending = syncMeta.pending[pendingFsrsId];
-        if (!pending) {
-          pendingFsrsId = pendingIds.find(function (fsrsId) {
-            const candidate = syncMeta.pending[fsrsId];
-            return candidate.id && String(candidate.id) === String(record.row.id);
-          }) || remoteFsrsId;
-          pending = syncMeta.pending[pendingFsrsId];
+        const local = findLocalEntry(record);
+        const pendingMatch = findPending(remoteFsrsId, record);
+        const pendingKey = pendingMatch && pendingMatch.key;
+        const pending = pendingMatch && pendingMatch.value;
+        if (local) {
+          usedLocalEntries.add(local);
         }
         if (pending && pending.type === "delete") {
           return;
         }
-        if (pending && pending.type === "upsert") {
-          if (pendingFsrsId !== remoteFsrsId) {
-            merged.delete(remoteFsrsId);
+
+        const localEntry = pending && pending.type === "upsert" && pending.entry
+          ? normalizeSavedEntry(pending.entry)
+          : local;
+        let nextEntry = record.entry;
+        if (localEntry) {
+          const baseline = findBaseline(localEntry.fsrsId, record.row);
+          const baselineFingerprint = (pending && pending.baselineFingerprint) ||
+            (baseline && baseline.fingerprint);
+          const baselineEntry = (pending && pending.baselineEntry) ||
+            (baseline && baseline.entry) || null;
+          let mergeResult;
+
+          if (!baselineEntry && baselineFingerprint &&
+              entryFingerprint(localEntry) === baselineFingerprint) {
+            mergeResult = { entry: record.entry, conflicts: [] };
+          } else if (!baselineEntry && baselineFingerprint &&
+              entryFingerprint(record.entry) === baselineFingerprint) {
+            mergeResult = { entry: localEntry, conflicts: [] };
+          } else {
+            mergeResult = mergeSyncEntries(baselineEntry, localEntry, record.entry);
           }
-          merged.set(
-            pendingFsrsId,
-            normalizeSavedEntry(pending.entry || cachedById.get(pendingFsrsId))
-          );
-        } else {
-          merged.set(remoteFsrsId, record.entry);
+
+          nextEntry = mergeResult.entry;
+          if (mergeResult.conflicts.length > 0) {
+            const conflictKey = localEntry.fsrsId;
+            if (pendingKey && pendingKey !== conflictKey) {
+              delete syncMeta.pending[pendingKey];
+            }
+            syncMeta.pending[conflictKey] = {
+              type: "upsert",
+              id: record.row.id,
+              baseUpdatedAt: (pending && pending.baseUpdatedAt) ||
+                (baseline && baseline.updatedAt) || record.row.updated_at,
+              baselineFingerprint: (pending && pending.baselineFingerprint) ||
+                baselineFingerprint || (baselineEntry ? entryFingerprint(baselineEntry) : null),
+              baselineEntry: cloneData(baselineEntry),
+              entry: cloneData(localEntry)
+            };
+            recoveryEntries.push({
+              entry: cloneData(nextEntry),
+              row: cloneData(record.row),
+              mergeResult: {
+                conflicts: mergeResult.conflicts,
+                localEntry: cloneData(localEntry),
+                cloudEntry: cloneData(record.entry)
+              }
+            });
+          } else if (entryFingerprint(nextEntry) !== entryFingerprint(record.entry)) {
+            const nextPendingKey = nextEntry.fsrsId;
+            if (pendingKey && pendingKey !== nextPendingKey) {
+              delete syncMeta.pending[pendingKey];
+            }
+            syncMeta.pending[nextPendingKey] = {
+              type: "upsert",
+              id: record.row.id,
+              baseUpdatedAt: record.row.updated_at,
+              baselineFingerprint: entryFingerprint(record.entry),
+              baselineEntry: cloneData(record.entry),
+              entry: cloneData(nextEntry)
+            };
+          } else if (pendingKey) {
+            delete syncMeta.pending[pendingKey];
+          }
+        }
+
+        const entryKey = nextEntry.fsrsId || remoteFsrsId;
+        merged.set(entryKey, nextEntry);
+        nextRows[entryKey] = cloudRowMetadata(record.row);
+      });
+
+      localEntries.forEach(function (entry) {
+        if (usedLocalEntries.has(entry)) {
+          return;
+        }
+        const pending = syncMeta.pending[entry.fsrsId];
+        if (pending && pending.type === "delete") {
+          return;
+        }
+        const localEntry = normalizeSavedEntry((pending && pending.entry) || entry);
+        if (!localEntry) {
+          return;
+        }
+        merged.set(localEntry.fsrsId, localEntry);
+        if (!pending || pending.type !== "upsert") {
+          syncMeta.pending[localEntry.fsrsId] = {
+            type: "upsert",
+            id: null,
+            baseUpdatedAt: null,
+            baselineFingerprint: null,
+            baselineEntry: null,
+            entry: cloneData(localEntry)
+          };
         }
       });
-      pendingIds.forEach(function (fsrsId) {
+      Object.keys(syncMeta.pending).forEach(function (fsrsId) {
         const pending = syncMeta.pending[fsrsId];
-        if (pending.type === "delete") {
-          merged.delete(fsrsId);
-        } else if (pending.entry || cachedById.has(fsrsId)) {
-          merged.set(fsrsId, normalizeSavedEntry(pending.entry || cachedById.get(fsrsId)));
-        }
-      });
-      recoveryEntries.forEach(function (difference) {
-        if (difference.row) {
-          const remoteEntry = cloudRowToEntry(difference.row);
-          if (remoteEntry.fsrsId !== difference.entry.fsrsId) {
-            merged.delete(remoteEntry.fsrsId);
+        if (pending.type === "upsert" && pending.entry && !merged.has(fsrsId)) {
+          const pendingEntry = normalizeSavedEntry(pending.entry);
+          if (pendingEntry) {
+            merged.set(pendingEntry.fsrsId, pendingEntry);
           }
         }
-        merged.set(difference.entry.fsrsId, difference.entry);
       });
+
+      cloudCacheRecovery = recoveryEntries.length > 0 ? { entries: recoveryEntries } : null;
       vocabulary = Array.from(merged.values()).filter(Boolean);
 
-      const nextRows = {};
-      remoteMap.forEach(function (record, fsrsId) {
-        nextRows[fsrsId] = syncMeta.pending[fsrsId] && syncMeta.rows[fsrsId]
-          ? syncMeta.rows[fsrsId]
-          : cloudRowMetadata(record.row);
-      });
       Object.keys(syncMeta.pending).forEach(function (fsrsId) {
         if (syncMeta.rows[fsrsId] && !nextRows[fsrsId]) {
           nextRows[fsrsId] = syncMeta.rows[fsrsId];
@@ -2978,9 +3474,9 @@
         if (!cacheSaved || !metadataSaved) {
           setSyncStatus("Sync is paused, but the local cache or recovery state could not be saved.", true);
         }
-      } else if (hasPending && metadataSaved) {
+      } else if (Object.keys(syncMeta.pending).length > 0 && metadataSaved) {
         queueCloudSync();
-      } else if (hasPending) {
+      } else if (Object.keys(syncMeta.pending).length > 0) {
         setSyncStatus("Cloud data loaded, but pending sync details could not be saved locally.", true);
       } else if (!cacheSaved || !metadataSaved) {
         setSyncStatus("Cloud data loaded, but the local cache or sync metadata could not be saved.", true);
@@ -3286,6 +3782,15 @@
       element.className = "message" + (kind ? " " + kind : "");
     }
 
+    function activePanelMessageElement() {
+      if (activeTabName === "review") {
+        return elements.reviewMessage;
+      }
+      return activeTabName === "dictionary"
+        ? elements.dictionaryMessage
+        : elements.vocabularyMessage;
+    }
+
     function addText(parent, tagName, text, className) {
       const element = document.createElement(tagName);
       element.textContent = text;
@@ -3309,6 +3814,7 @@
 
     function switchTab(tabName) {
       const tabNames = ["dictionary", "vocabulary", "review"];
+      activeTabName = tabName;
       tabNames.forEach(function (name) {
         const selected = name === tabName;
         document.getElementById(name + "Tab").setAttribute("aria-selected", String(selected));
@@ -3428,7 +3934,8 @@
           "https://api.dictionaryapi.dev/api/v2/entries/en/" + encodeURIComponent(searchedWord)
         );
         if (response.status === 404) {
-          throw new Error("No dictionary entry was found for “" + searchedWord + "”.");
+          showManualEntryFallback(searchedWord);
+          return;
         }
         if (!response.ok) {
           throw new Error("The dictionary service returned an error (" + response.status + "). Please try again.");
@@ -3466,6 +3973,10 @@
       } catch (error) {
         console.error("Dictionary search failed:", error);
         translationLookupPending = false;
+        if (!lookupResult) {
+          showManualEntryFallback(searchedWord);
+          return;
+        }
         lookupResult = null;
         setMessage(
           elements.dictionaryMessage,
@@ -3479,6 +3990,16 @@
         elements.dictionaryInput.disabled = false;
       }
     });
+
+    function showManualEntryFallback(word) {
+      lookupResult = emptyEntry({
+        word: word,
+        translationZh: "",
+        examples: []
+      }, new Date().toISOString());
+      renderManualEntryForm(lookupResult);
+      setMessage(elements.dictionaryMessage, "No dictionary entry found. You can add your own meaning.");
+    }
 
     function renderDictionaryResult(entry) {
       const card = document.createElement("article");
@@ -3522,9 +4043,12 @@
     }
 
     function renderEntryTranslation(parent, entry) {
-      const meaning = primaryChineseMeaning(entry.translationZh);
+      const meaning = displayedChineseMeaning(entry);
       if (meaning) {
         addText(parent, "p", meaning, "translation-value");
+        if (entry.translationSource === "manual") {
+          addText(parent, "small", "(User edited)", "user-edited-label");
+        }
         return;
       }
       addText(
@@ -3533,6 +4057,21 @@
         translationLookupPending ? "Looking up the Chinese meaning…" : "Chinese meaning unavailable",
         "translation-value"
       );
+    }
+
+    function displayedChineseMeaning(entry) {
+      return entry.translationSource === "manual"
+        ? decodeDisplayText(entry.translationZh)
+        : primaryChineseMeaning(entry.translationZh);
+    }
+
+    function isUnavailableMeaning(value) {
+      const normalized = value.trim().toLowerCase().replace(/[.!?。]+$/g, "");
+      return [
+        "no dictionary entry was found",
+        "no dictionary entry found",
+        "chinese meaning unavailable"
+      ].includes(normalized);
     }
 
     async function retryDictionaryTranslation() {
@@ -3683,12 +4222,66 @@
 
       vocabulary.unshift(savedEntry);
       if (saveVocabulary()) {
-        setMessage(elements.dictionaryMessage, "Added to My Vocabulary.", "success");
+        setVocabularySavedMessage(elements.dictionaryMessage, "Added to My Vocabulary.");
         renderDictionaryResult(entry);
+        renderVocabulary();
+        renderReview();
       } else {
         vocabulary.shift();
         renderDictionaryResult(entry);
       }
+    }
+
+    function renderManualEntryForm(entry) {
+      const card = document.createElement("article");
+      card.className = "result-card";
+      const heading = document.createElement("div");
+      heading.className = "result-heading";
+      addText(heading, "h3", entry.word);
+      card.appendChild(heading);
+
+      const existing = findVocabularyEntry(entry.word);
+      if (existing) {
+        renderEntryTranslation(card, existing);
+        addText(card, "p", "This expression is already in My Vocabulary.", "message");
+        elements.dictionaryResults.replaceChildren(card);
+        return;
+      }
+
+      const form = document.createElement("form");
+      const meaningInput = document.createElement("input");
+      meaningInput.type = "text";
+      meaningInput.required = true;
+      meaningInput.autocomplete = "off";
+      meaningInput.setAttribute("aria-label", "Chinese meaning");
+      addLabeledControl(form, "Chinese meaning", meaningInput);
+      const addButton = document.createElement("button");
+      addButton.type = "submit";
+      addButton.textContent = "Add to Vocabulary";
+      form.appendChild(addButton);
+      form.addEventListener("submit", function (event) {
+        event.preventDefault();
+        const meaning = meaningInput.value.trim();
+        if (!meaning) {
+          meaningInput.focus();
+          return;
+        }
+        if (isUnavailableMeaning(meaning)) {
+          setMessage(elements.dictionaryMessage, "Please enter your Chinese meaning instead of an unavailable-meaning message.", "error");
+          meaningInput.focus();
+          return;
+        }
+        if (findVocabularyEntry(entry.word)) {
+          setMessage(elements.dictionaryMessage, "Already in My Vocabulary");
+          renderManualEntryForm(entry);
+          return;
+        }
+        entry.translationZh = meaning;
+        entry.translationSource = "manual";
+        addWordToVocabulary(entry);
+      });
+      card.appendChild(form);
+      elements.dictionaryResults.replaceChildren(card);
     }
 
     elements.vocabularySearch.addEventListener("input", renderVocabulary);
@@ -3795,10 +4388,9 @@
         activeReviewWord = "";
         answerRevealed = false;
       }
-      setMessage(
+      setVocabularySavedMessage(
         elements.vocabularyMessage,
-        isKnown ? "Marked Known and removed from reviews." : "Marked Unknown and due for review today.",
-        "success"
+        isKnown ? "Marked Known and removed from reviews." : "Marked Unknown and due for review today."
       );
       renderVocabulary();
       renderReview();
@@ -3807,112 +4399,53 @@
     function renderSavedWordEditor(card, entry) {
       const details = document.createElement("details");
       details.className = "word-editor";
-      addText(details, "summary", "Edit saved word");
+      addText(details, "summary", "Edit Chinese Meaning");
       const form = document.createElement("form");
-      const wordInput = document.createElement("input");
-      wordInput.value = entry.word;
-      wordInput.required = true;
-      addLabeledControl(form, "Word", wordInput);
-
-      let examplesInput = null;
-      if (entry.definitions.length === 0) {
-        examplesInput = document.createElement("textarea");
-        examplesInput.value = entry.examples.join("\n");
-        addLabeledControl(form, "Example sentences (one per line)", examplesInput);
-      }
-
-      const definitionFields = [];
-      entry.definitions.forEach(function (definition, index) {
-        const fieldset = document.createElement("fieldset");
-        fieldset.className = "definition-editor";
-        addText(fieldset, "legend", "Meaning " + (index + 1));
-        const exampleInput = document.createElement("input");
-        exampleInput.value = definition.example;
-        addLabeledControl(fieldset, "Example sentence", exampleInput);
-        form.appendChild(fieldset);
-        definitionFields.push({
-          entry: definition,
-          example: exampleInput
-        });
-      });
-
+      const meaningInput = document.createElement("input");
+      meaningInput.type = "text";
+      meaningInput.value = displayedChineseMeaning(entry);
+      meaningInput.required = true;
+      meaningInput.setAttribute("aria-label", "Chinese meaning");
+      addLabeledControl(form, "Chinese meaning", meaningInput);
       const actions = document.createElement("div");
       actions.className = "word-card-actions";
       const saveButton = document.createElement("button");
       saveButton.type = "submit";
-      saveButton.textContent = "Save changes";
+      saveButton.textContent = "Save";
       actions.appendChild(saveButton);
-      actions.appendChild(createButton("Cancel", "secondary-button", function () {
-        details.open = false;
-        renderVocabulary();
-      }));
       form.appendChild(actions);
 
       form.addEventListener("submit", function (event) {
         event.preventDefault();
-        const newWord = wordInput.value.trim();
-        const duplicate = vocabulary.some(function (saved) {
-          return saved !== entry && normalizedWordKey(saved.word) === normalizedWordKey(newWord);
-        });
-        if (duplicate) {
-          setMessage(elements.vocabularyMessage, "That word is already in My Vocabulary.", "error");
+        const meaning = meaningInput.value.trim();
+        if (!meaning) {
+          meaningInput.focus();
+          return;
+        }
+        if (isUnavailableMeaning(meaning)) {
+          setMessage(elements.vocabularyMessage, "Please enter a Chinese meaning instead of an unavailable-meaning message.", "error");
+          meaningInput.focus();
           return;
         }
 
         const previous = JSON.parse(JSON.stringify(entry));
-        entry.word = newWord;
-        entry.definitions = definitionFields.map(function (fields) {
-          return {
-            partOfSpeech: fields.entry.partOfSpeech,
-            definition: fields.entry.definition,
-            translationZh: fields.entry.translationZh,
-            translationSource: fields.entry.translationSource,
-            example: fields.example.value.trim()
-          };
-        });
-        if (entry.definitions.length > 0) {
-          entry.examples = entry.definitions.map(function (definition) {
-            return definition.example;
-          }).filter(Boolean);
-        } else if (examplesInput) {
-          entry.examples = examplesInput.value.split(/\r?\n/).map(function (example) {
-            return example.trim();
-          }).filter(Boolean);
-        }
+        entry.translationZh = meaning;
+        entry.translationSource = "manual";
 
         if (!saveVocabulary()) {
           Object.assign(entry, previous);
           return;
         }
 
-        let cachesSaved = true;
-        if (entry.translationZh || entry.translationSource) {
-          cachesSaved = storeTranslation(
-            translationKey(entry.word, "word", entry.word, ""),
-            entry.translationZh,
-            entry.translationSource || "manual",
-            elements.vocabularyMessage
-          ) && cachesSaved;
-        }
-        entry.definitions.forEach(function (definition) {
-          if (definition.translationZh || definition.translationSource) {
-            cachesSaved = storeTranslation(
-              translationKey(entry.word, "definition", definition.definition, definition.partOfSpeech),
-              definition.translationZh,
-              definition.translationSource || "manual",
-              elements.vocabularyMessage
-            ) && cachesSaved;
-          }
-        });
-        setMessage(
-          elements.vocabularyMessage,
-          cachesSaved
-            ? "Saved your word changes."
-            : "Saved your word, but could not update one or more translation cache entries.",
-          cachesSaved ? "success" : "error"
-        );
+        details.open = false;
+        setVocabularySavedMessage(elements.vocabularyMessage, "Chinese meaning saved.");
         renderVocabulary();
         renderReview();
+        if (lookupResult && normalizedWordKey(lookupResult.word) === normalizedWordKey(entry.word)) {
+          lookupResult.translationZh = meaning;
+          lookupResult.translationSource = "manual";
+          renderDictionaryResult(lookupResult);
+        }
       });
 
       details.appendChild(form);
@@ -3951,7 +4484,7 @@
 
       const removed = vocabulary.splice(existing, 1)[0];
       if (saveVocabulary()) {
-        setMessage(elements.vocabularyMessage, "Deleted “" + removed.word + "”.", "success");
+        setVocabularySavedMessage(elements.vocabularyMessage, "Deleted “" + removed.word + "”.");
         renderVocabulary();
         renderReview();
       } else {
@@ -4029,12 +4562,11 @@
           vocabulary = previousVocabulary;
           return;
         }
-        setMessage(
+        setVocabularySavedMessage(
           elements.vocabularyMessage,
           "Imported " + added + " new word" + (added === 1 ? "" : "s") +
             "; skipped " + duplicateCount + " duplicate" + (duplicateCount === 1 ? "" : "s") +
-            ". Existing words and review data were left unchanged.",
-          "success"
+            ". Existing words and review data were left unchanged."
         );
         renderVocabulary();
         renderReview();
@@ -4340,9 +4872,9 @@
 
         activeReviewWord = "";
         answerRevealed = false;
-        setMessage(elements.reviewMessage, outcome === "Known"
+        setVocabularySavedMessage(elements.reviewMessage, outcome === "Known"
           ? "Marked Known. Removed from review."
-          : "Marked Unknown. Next review: " + formatDueDate(serializedCard.dueAt) + ".", "success");
+          : "Marked Unknown. Next review: " + formatDueDate(serializedCard.dueAt) + ".");
       } catch (error) {
         console.error("FSRS review failed:", error);
         setMessage(
