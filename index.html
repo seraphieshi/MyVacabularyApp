@@ -1220,6 +1220,7 @@
     const CLOUD_META_PREFIX = STORAGE_KEY + ".sync.";
     const USER_TRANSLATION_CACHE_PREFIX = TRANSLATION_CACHE_KEY + ".user.";
     const CLOUD_ROW_COLUMNS = "id,created_at,updated_at,user_id,word,chinese_meaning,cefr_level,is_known,next_review,review_data,word_data";
+    const CLOUD_REFRESH_INTERVAL_MS = 30000;
     const FSRS_PACKAGE_VERSION = "6.0.0";
     const FSRS_MODEL_VERSION = "FSRS-7";
     const starterWords = [
@@ -1305,6 +1306,7 @@
     let cloudReady = false;
     let syncInProgress = false;
     let syncQueued = false;
+    let cloudRefreshTask = null;
     let suppressCloudTracking = false;
     let syncMetadataSaveFailed = false;
     let authLoadingUserId = "";
@@ -2131,9 +2133,14 @@
       const reviewData = row.review_data && typeof row.review_data === "object" && !Array.isArray(row.review_data)
         ? row.review_data
         : {};
+      const columnMeaning = typeof row.chinese_meaning === "string" ? row.chinese_meaning : "";
+      const wordDataMeaning = typeof wordData.translationZh === "string" ? wordData.translationZh : "";
       const rawEntry = Object.assign({}, wordData, reviewData, {
         word: row.word,
-        translationZh: row.chinese_meaning || wordData.translationZh || "",
+        translationZh: columnMeaning || wordDataMeaning,
+        translationSource: columnMeaning && columnMeaning !== wordDataMeaning
+          ? "manual"
+          : wordData.translationSource,
         cefrLevel: typeof row.cefr_level === "string" ? row.cefr_level : (wordData.cefrLevel || ""),
         reviewStatus: row.is_known ? "mastered" : "active",
         masteredAt: row.is_known ? (reviewData.masteredAt || wordData.masteredAt || "") : "",
@@ -2598,8 +2605,17 @@
       elements.logoutButton.disabled = true;
       setSyncStatus("Syncing changes…", false);
       let syncError = null;
+      let cloudRefreshSucceeded = false;
       const syncingUserId = cloudUserId;
-      syncPendingChanges().catch(function (error) {
+      syncPendingChanges().then(async function () {
+        if (cloudUserId === syncingUserId && cloudReady) {
+          cloudRefreshSucceeded = await refreshCloudFromServer();
+          if (!cloudRefreshSucceeded && cloudUserId === syncingUserId &&
+              cloudReady && !cloudConflict && !cloudCacheRecovery) {
+            setSyncStatus("Cloud changes may have been saved, but the latest cloud data could not be confirmed. Please try again.", true);
+          }
+        }
+      }).catch(function (error) {
         syncError = error;
         console.error("Vocabulary cloud sync failed:", error);
         setSyncStatus(
@@ -2618,7 +2634,8 @@
         if (syncQueued) {
           syncQueued = false;
           queueCloudSync();
-        } else if (syncError || cloudUserId !== syncingUserId || !cloudReady) {
+        } else if (syncError || cloudUserId !== syncingUserId || !cloudReady ||
+            !cloudRefreshSucceeded) {
           return;
         } else if (!cloudConflict && Object.keys(syncMeta.pending).length === 0) {
           setSyncStatus("Synced", false);
@@ -3561,6 +3578,7 @@
           return;
         }
         cloudReady = true;
+        lastCloudRefresh = Date.now();
         reconcileCloudRows(rows, cachedEntries);
       } catch (error) {
         console.error("Could not load cloud vocabulary:", error);
@@ -3615,20 +3633,36 @@
     async function refreshCloudFromServer() {
       const userId = cloudUserId;
       if (!userId || !cloudReady || cloudConflict || cloudCacheRecovery) {
-        return;
+        return false;
       }
-      try {
-        const rows = await fetchCloudRows(userId);
-        if (cloudUserId !== userId) {
-          return;
-        }
-        reconcileCloudRows(rows, vocabulary);
-      } catch (error) {
-        console.error("Could not refresh cloud vocabulary:", error);
-        if (cloudUserId === userId) {
-          setSyncStatus("Could not refresh cloud words: " + error.message, true);
-        }
+      if (cloudRefreshTask && cloudRefreshTask.userId === userId) {
+        return cloudRefreshTask.promise;
       }
+
+      const refreshTask = { userId: userId, promise: null };
+      refreshTask.promise = (async function () {
+        try {
+          const rows = await fetchCloudRows(userId);
+          if (cloudUserId !== userId) {
+            return false;
+          }
+          reconcileCloudRows(rows, vocabulary);
+          lastCloudRefresh = Date.now();
+          return true;
+        } catch (error) {
+          console.error("Could not refresh cloud vocabulary:", error);
+          if (cloudUserId === userId) {
+            setSyncStatus("Could not refresh cloud words: " + error.message, true);
+          }
+          return false;
+        } finally {
+          if (cloudRefreshTask === refreshTask) {
+            cloudRefreshTask = null;
+          }
+        }
+      }());
+      cloudRefreshTask = refreshTask;
+      return refreshTask.promise;
     }
 
     async function performAuthAction(action) {
@@ -3681,23 +3715,29 @@
     function initializeSupabaseAuth() {
       window.addEventListener("focus", function () {
         renderVocabularyStatistics();
-        if (cloudReady && Date.now() - lastCloudRefresh > 5000) {
-          lastCloudRefresh = Date.now();
+        if (cloudReady && !syncInProgress && Date.now() - lastCloudRefresh > 5000) {
           refreshCloudFromServer();
         }
       });
       document.addEventListener("visibilitychange", function () {
         if (!document.hidden) {
           renderVocabularyStatistics();
+          if (cloudReady && !syncInProgress && Date.now() - lastCloudRefresh > 5000) {
+            refreshCloudFromServer();
+          }
         }
       });
       window.addEventListener("online", function () {
         if (cloudReady) {
-          lastCloudRefresh = Date.now();
-          refreshCloudFromServer();
           queueCloudSync();
         }
       });
+      window.setInterval(function () {
+        if (cloudReady && !syncInProgress && !document.hidden &&
+            Date.now() - lastCloudRefresh >= CLOUD_REFRESH_INTERVAL_MS) {
+          refreshCloudFromServer();
+        }
+      }, CLOUD_REFRESH_INTERVAL_MS);
 
       if (!supabaseClient) {
         authInitialized = true;
@@ -4043,10 +4083,14 @@
     }
 
     function renderEntryTranslation(parent, entry) {
-      const meaning = displayedChineseMeaning(entry);
+      const savedEntry = findVocabularyEntry(entry.word);
+      const displayedEntry = savedEntry && savedEntry.translationSource === "manual"
+        ? savedEntry
+        : entry;
+      const meaning = displayedChineseMeaning(displayedEntry);
       if (meaning) {
         addText(parent, "p", meaning, "translation-value");
-        if (entry.translationSource === "manual") {
+        if (displayedEntry.translationSource === "manual") {
           addText(parent, "small", "(User edited)", "user-edited-label");
         }
         return;
