@@ -422,9 +422,50 @@
 
     .vocabulary-stats {
       display: grid;
-      grid-template-columns: repeat(4, minmax(0, 1fr));
+      grid-template-columns: minmax(0, 1fr);
       gap: 8px;
       margin: 0 0 18px;
+    }
+
+    .vocabulary-categories {
+      display: grid;
+      gap: 10px;
+      margin-bottom: 18px;
+    }
+
+    .vocabulary-category {
+      border: 1px solid #303b4d;
+      border-radius: 12px;
+      background: #151b25;
+      overflow: hidden;
+    }
+
+    .vocabulary-category-summary {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      min-height: 54px;
+      padding: 10px 14px;
+      cursor: pointer;
+      font-weight: 700;
+      color: #e7edf7;
+    }
+
+    .vocabulary-category-summary strong {
+      min-width: 34px;
+      border-radius: 999px;
+      padding: 4px 9px;
+      background: #303b4d;
+      text-align: center;
+    }
+
+    .vocabulary-category-list {
+      padding: 0 12px 12px;
+    }
+
+    .upcoming-date {
+      color: #b6c4d8;
+      font-size: 0.85rem;
     }
 
     .vocabulary-stat {
@@ -1132,23 +1173,12 @@
     <section class="panel" id="vocabularyPanel" role="tabpanel" aria-labelledby="vocabularyTab" hidden>
       <h2 class="section-heading">My Vocabulary</h2>
       <div class="vocabulary-stats" id="vocabularyStats" aria-label="Vocabulary statistics" aria-busy="true">
-        <div class="vocabulary-stat">
-          <span class="vocabulary-stat-label">Total</span>
+        <div class="vocabulary-stat vocabulary-total-stat">
+          <span class="vocabulary-stat-label">Total Vocabulary</span>
           <strong id="vocabularyTotalCount">—</strong>
         </div>
-        <div class="vocabulary-stat">
-          <span class="vocabulary-stat-label">Known</span>
-          <strong id="vocabularyKnownCount">—</strong>
-        </div>
-        <div class="vocabulary-stat">
-          <span class="vocabulary-stat-label">Unknown</span>
-          <strong id="vocabularyUnknownCount">—</strong>
-        </div>
-        <button class="vocabulary-stat" id="vocabularyDueTodayButton" type="button" disabled>
-          <span class="vocabulary-stat-label">Due Today</span>
-          <strong id="vocabularyDueTodayCount">—</strong>
-        </button>
       </div>
+      <div class="vocabulary-categories" id="vocabularyCategories" aria-label="Vocabulary categories"></div>
       <p class="section-description">Your words stay on this device when signed out. Sign in to sync them across devices.</p>
       <div class="toolbar">
         <input id="vocabularySearch" type="search" placeholder="Search saved words" aria-label="Search saved words">
@@ -1260,10 +1290,7 @@
       vocabularySearch: document.getElementById("vocabularySearch"),
       vocabularyStats: document.getElementById("vocabularyStats"),
       vocabularyTotalCount: document.getElementById("vocabularyTotalCount"),
-      vocabularyKnownCount: document.getElementById("vocabularyKnownCount"),
-      vocabularyUnknownCount: document.getElementById("vocabularyUnknownCount"),
-      vocabularyDueTodayButton: document.getElementById("vocabularyDueTodayButton"),
-      vocabularyDueTodayCount: document.getElementById("vocabularyDueTodayCount"),
+      vocabularyCategories: document.getElementById("vocabularyCategories"),
       sortWords: document.getElementById("sortWords"),
       cefrFilter: document.getElementById("cefrFilter"),
       vocabularyMessage: document.getElementById("vocabularyMessage"),
@@ -1364,10 +1391,13 @@
         cefrSource: estimate.level ? "heuristic" : "none",
         addedAt: addedAt,
         dueAt: addedAt,
+        nextReviewDate: dateKey(new Date(addedAt)),
         fsrsVersion: "",
         fsrsCard: null,
         reviewStatus: "active",
         masteredAt: "",
+        reactivatedAt: "",
+        dailyScheduleMigrationVersion: "",
         reviewHistory: [],
         reviews: 0,
         known: 0,
@@ -1511,6 +1541,15 @@
         if (normalized.some(function (entry) { return entry === null; })) {
           throw new Error("Saved vocabulary contains an invalid entry.");
         }
+        let migrationChanged = false;
+        normalized.forEach(function (entry) {
+          if (migrateEntryToDailyScheduling(entry)) {
+            migrationChanged = true;
+          }
+        });
+        if (migrationChanged) {
+          localStorage.setItem(STORAGE_KEY, JSON.stringify(normalized));
+        }
         return normalized;
       } catch (error) {
         console.error("Could not load saved vocabulary:", error);
@@ -1546,16 +1585,6 @@
         50
       );
       let nextRefresh = nextMidnight.getTime();
-      const currentTime = Date.now();
-      vocabulary.forEach(function (entry) {
-        if (!isReviewActive(entry) || isNewToFsrs(entry)) {
-          return;
-        }
-        const dueTime = new Date(entryDueAt(entry)).getTime();
-        if (Number.isFinite(dueTime) && dueTime > currentTime) {
-          nextRefresh = Math.min(nextRefresh, dueTime + 50);
-        }
-      });
       const delay = Math.max(50, nextRefresh - Date.now());
       vocabularyStatsTimer = window.setTimeout(function () {
         vocabularyStatsTimer = null;
@@ -1567,57 +1596,11 @@
       scheduleVocabularyStatsRefresh();
       const isLoading = !authInitialized || Boolean(cloudUserId && !cloudReady);
       elements.vocabularyStats.setAttribute("aria-busy", String(isLoading));
-      elements.vocabularyDueTodayButton.disabled = isLoading;
       if (isLoading) {
         elements.vocabularyTotalCount.textContent = "—";
-        elements.vocabularyKnownCount.textContent = "—";
-        elements.vocabularyUnknownCount.textContent = "—";
-        elements.vocabularyDueTodayCount.textContent = "—";
-        elements.vocabularyDueTodayButton.setAttribute(
-          "aria-label",
-          "Due Today count unavailable while vocabulary loads"
-        );
         return;
       }
-
-      const wordsByKey = new Map();
-      vocabulary.forEach(function (entry) {
-        const key = normalizedWordKey(entry.word);
-        if (!key) {
-          return;
-        }
-        if (!wordsByKey.has(key)) {
-          wordsByKey.set(key, []);
-        }
-        wordsByKey.get(key).push(entry);
-      });
-
-      const dueWordKeys = new Set(dueEntriesToday().map(function (entry) {
-        return normalizedWordKey(entry.word);
-      }));
-
-      let known = 0;
-      let due = 0;
-      wordsByKey.forEach(function (entries, key) {
-        const isKnown = entries.every(function (entry) {
-          return !isReviewActive(entry);
-        });
-        if (isKnown) {
-          known += 1;
-        } else if (dueWordKeys.has(key)) {
-          due += 1;
-        }
-      });
-
-      const total = wordsByKey.size;
-      elements.vocabularyTotalCount.textContent = String(total);
-      elements.vocabularyKnownCount.textContent = String(known);
-      elements.vocabularyUnknownCount.textContent = String(total - known);
-      elements.vocabularyDueTodayCount.textContent = String(due);
-      elements.vocabularyDueTodayButton.setAttribute(
-        "aria-label",
-        "Open Review, " + due + " word" + (due === 1 ? "" : "s") + " due today"
-      );
+      elements.vocabularyTotalCount.textContent = String(vocabulary.length);
     }
 
     function normalizeSavedEntry(entry) {
@@ -1660,6 +1643,13 @@
       const dueAt = reviewStatus === "mastered" && entry.dueAt === ""
         ? ""
         : validIsoDate(entry.dueAt) || (fsrsCard ? fsrsCard.dueAt : addedAt);
+      let nextReviewDate = typeof entry.nextReviewDate === "string"
+        && /^\d{4}-\d{2}-\d{2}$/.test(entry.nextReviewDate)
+        ? entry.nextReviewDate
+        : "";
+      if (!nextReviewDate) {
+        nextReviewDate = calendarDateFromValue(entry.dueAt || (fsrsCard ? fsrsCard.dueAt : "") || addedAt);
+      }
 
       const normalizedEntry = {
         word: entry.word.trim(),
@@ -1683,24 +1673,35 @@
             : (entry.cefrLevel && cefrLevel ? "unverified" : (estimate.level ? "heuristic" : "none"))),
         addedAt: addedAt,
         dueAt: dueAt,
+        nextReviewDate: nextReviewDate,
         fsrsVersion: typeof entry.fsrsVersion === "string"
           ? entry.fsrsVersion
           : (fsrsCard ? FSRS_MODEL_VERSION : ""),
         fsrsCard: fsrsCard,
         reviewStatus: reviewStatus,
         masteredAt: reviewStatus === "mastered" ? validIsoDate(entry.masteredAt) : "",
+        reactivatedAt: validIsoDate(entry.reactivatedAt),
+        dailyScheduleMigrationVersion: typeof entry.dailyScheduleMigrationVersion === "string"
+          ? entry.dailyScheduleMigrationVersion
+          : "",
         reviewHistory: Array.isArray(entry.reviewHistory)
           ? entry.reviewHistory.filter(function (item) {
               return item && typeof item.reviewedAt === "string";
             }).map(function (item) {
               return {
                 reviewedAt: validIsoDate(item.reviewedAt) || item.reviewedAt,
+                reviewLocalDate: typeof item.reviewLocalDate === "string" && /^\d{4}-\d{2}-\d{2}$/.test(item.reviewLocalDate)
+                  ? item.reviewLocalDate
+                  : "",
                 rating: typeof item.rating === "string" ? item.rating : "",
                 fsrsRating: typeof item.fsrsRating === "string" ? item.fsrsRating : "",
                 action: typeof item.action === "string" ? item.action : "",
                 ratingValue: nonNegativeNumber(item.ratingValue),
                 dueBefore: validIsoDate(item.dueBefore) || "",
                 dueAfter: validIsoDate(item.dueAfter) || "",
+                dueAfterDate: typeof item.dueAfterDate === "string" && /^\d{4}-\d{2}-\d{2}$/.test(item.dueAfterDate)
+                  ? item.dueAfterDate
+                  : "",
                 scheduledDays: Number.isFinite(item.scheduledDays) ? item.scheduledDays : 0,
                 stateBefore: Number.isFinite(item.stateBefore) ? item.stateBefore : null,
                 stateAfter: Number.isFinite(item.stateAfter) ? item.stateAfter : null,
@@ -1714,6 +1715,10 @@
       };
       if (typeof entry.ipa === "string") {
         normalizedEntry.ipa = entry.ipa;
+      }
+      migrateEntryToDailyScheduling(normalizedEntry);
+      if (normalizedEntry.reviewStatus === "mastered") {
+        normalizedEntry.nextReviewDate = "";
       }
       return normalizedEntry;
     }
@@ -2103,11 +2108,14 @@
         fsrsCard: entry.fsrsCard,
         reviewStatus: entry.reviewStatus,
         masteredAt: entry.masteredAt,
+        reactivatedAt: entry.reactivatedAt,
+        dailyScheduleMigrationVersion: entry.dailyScheduleMigrationVersion,
         reviewHistory: entry.reviewHistory,
         reviews: entry.reviews,
         known: entry.known,
         unknown: entry.unknown,
-        dueAt: entry.dueAt
+        dueAt: entry.dueAt,
+        nextReviewDate: entry.nextReviewDate
       };
       const payload = {
         user_id: cloudUserId,
@@ -2115,7 +2123,9 @@
         chinese_meaning: entry.translationZh || "",
         cefr_level: entry.cefrLevel || "",
         is_known: entry.reviewStatus === "mastered",
-        next_review: entry.reviewStatus === "mastered" ? null : entryDueAt(entry),
+        next_review: entry.reviewStatus === "mastered"
+          ? null
+          : (entry.nextReviewDate || calendarDateFromValue(entryDueAt(entry))),
         review_data: reviewData,
         word_data: cloneData(entry),
         updated_at: nextCloudUpdatedAt(previousUpdatedAt)
@@ -2144,6 +2154,15 @@
         cefrLevel: typeof row.cefr_level === "string" ? row.cefr_level : (wordData.cefrLevel || ""),
         reviewStatus: row.is_known ? "mastered" : "active",
         masteredAt: row.is_known ? (reviewData.masteredAt || wordData.masteredAt || "") : "",
+        nextReviewDate: row.is_known
+          ? ""
+          : (typeof reviewData.nextReviewDate === "string" && /^\d{4}-\d{2}-\d{2}$/.test(reviewData.nextReviewDate)
+            ? reviewData.nextReviewDate
+            : (typeof wordData.nextReviewDate === "string" && /^\d{4}-\d{2}-\d{2}$/.test(wordData.nextReviewDate)
+              ? wordData.nextReviewDate
+              : (typeof row.next_review === "string" && /^\d{4}-\d{2}-\d{2}$/.test(row.next_review)
+                ? row.next_review
+                : calendarDateFromValue(row.next_review || reviewData.dueAt || wordData.dueAt || row.created_at)))),
         dueAt: row.is_known
           ? ""
           : (row.next_review || reviewData.dueAt || wordData.dueAt || row.created_at)
@@ -2225,7 +2244,7 @@
 
       const merged = cloneData(cloud);
       const conflicts = [];
-      const scheduleFields = ["fsrsVersion", "fsrsCard", "reviewStatus", "masteredAt", "dueAt"];
+      const scheduleFields = ["fsrsVersion", "fsrsCard", "reviewStatus", "masteredAt", "dueAt", "nextReviewDate", "reactivatedAt"];
 
       function mergeField(field) {
         const localValue = local[field];
@@ -2537,6 +2556,7 @@
         reviewStatus: "Known/Unknown status",
         masteredAt: "Known/Unknown status",
         dueAt: "next review date",
+        nextReviewDate: "next review date",
         cefrLevel: "CEFR level",
         cefrSource: "CEFR level"
       };
@@ -3877,12 +3897,6 @@
       });
     });
 
-    elements.vocabularyDueTodayButton.addEventListener("click", function () {
-      if (!elements.vocabularyDueTodayButton.disabled) {
-        switchTab("review");
-      }
-    });
-
     elements.todayReviewToggle.addEventListener("click", function () {
       todayReviewExpanded = !todayReviewExpanded;
       elements.todayReviewToggle.setAttribute("aria-expanded", String(todayReviewExpanded));
@@ -4361,19 +4375,67 @@
       }
 
       elements.vocabularyList.replaceChildren();
-      if (visibleWords.length === 0) {
-        addText(
-          elements.vocabularyList,
-          "p",
-          vocabulary.length === 0
-            ? "Your vocabulary is empty. Search a word in Dictionary and add it here."
-            : "No saved words match your search.",
-          "empty-state"
-        );
+      elements.vocabularyCategories.replaceChildren();
+      if (vocabulary.length === 0) {
+        addText(elements.vocabularyCategories, "p", "Your vocabulary is empty. Search a word in Dictionary and add it here.", "empty-state");
         return;
       }
 
+      const today = dateKey(new Date());
+      const dueSet = new Set(dueEntriesToday().map(function (entry) { return entry.fsrsId; }));
+      const categories = [
+        { key: "due", title: "Due Today", entries: [] },
+        { key: "reviewed", title: "Reviewed Today", entries: [] },
+        { key: "upcoming", title: "Upcoming", entries: [] },
+        { key: "known", title: "Known", entries: [] }
+      ];
+      const categoryCounts = { due: 0, reviewed: 0, upcoming: 0, known: 0 };
+      vocabulary.forEach(function (entry) {
+        if (!isReviewActive(entry)) {
+          categoryCounts.known += 1;
+        } else if (reviewedTodayEntry(entry, today)) {
+          categoryCounts.reviewed += 1;
+        } else if (dueSet.has(entry.fsrsId)) {
+          categoryCounts.due += 1;
+        } else {
+          const dueDate = entry.nextReviewDate || calendarDateFromValue(entryDueAt(entry));
+          if (dueDate && dueDate > today) {
+            categoryCounts.upcoming += 1;
+          } else {
+            categoryCounts.due += 1;
+          }
+        }
+      });
       visibleWords.forEach(function (entry) {
+        let category;
+        if (!isReviewActive(entry)) {
+          category = categories[3];
+        } else if (reviewedTodayEntry(entry, today)) {
+          category = categories[1];
+        } else if (dueSet.has(entry.fsrsId)) {
+          category = categories[0];
+        } else {
+          const dueDate = entry.nextReviewDate || calendarDateFromValue(entryDueAt(entry));
+          category = dueDate && dueDate > today ? categories[2] : categories[0];
+        }
+        category.entries.push(entry);
+      });
+
+      categories.forEach(function (category) {
+        const details = document.createElement("details");
+        details.className = "vocabulary-category";
+        details.open = category.key === "due";
+        const summary = document.createElement("summary");
+        summary.className = "vocabulary-category-summary";
+        addText(summary, "span", category.title);
+        addText(summary, "strong", String(categoryCounts[category.key]));
+        details.appendChild(summary);
+        const list = document.createElement("div");
+        list.className = "word-list vocabulary-category-list";
+        if (category.entries.length === 0) {
+          addText(list, "p", "No words in this category.", "empty-state");
+        }
+        category.entries.forEach(function (entry) {
         const card = document.createElement("article");
         card.className = "word-card";
         const heading = document.createElement("div");
@@ -4386,7 +4448,7 @@
         const actions = document.createElement("div");
         actions.className = "word-card-actions";
         actions.appendChild(createButton(
-          entry.reviewStatus === "mastered" ? "Mark Unknown" : "Mark Known",
+          entry.reviewStatus === "mastered" ? "Move to Unknown" : "Mark Known",
           "secondary-button",
           function () {
             setVocabularyKnown(entry, entry.reviewStatus !== "mastered");
@@ -4401,8 +4463,14 @@
         renderEntryTranslation(card, entry);
         renderCefrBadge(card, entry);
         renderEntryExample(card, entry);
+        if (category.key === "upcoming") {
+          addText(card, "p", "Next review: " + formatDueDate(entry.nextReviewDate || entryDueAt(entry)), "upcoming-date");
+        }
         renderSavedWordEditor(card, entry);
-        elements.vocabularyList.appendChild(card);
+          list.appendChild(card);
+        });
+        details.appendChild(list);
+        elements.vocabularyCategories.appendChild(details);
       });
     }
 
@@ -4416,9 +4484,20 @@
       const now = new Date().toISOString();
       entry.reviewStatus = nextStatus;
       entry.masteredAt = isKnown ? now : "";
-      entry.dueAt = isKnown ? "" : now;
-      if (!isKnown && entry.fsrsCard) {
-        entry.fsrsCard.dueAt = now;
+      entry.reactivatedAt = isKnown ? "" : now;
+      if (isKnown) {
+        entry.dueAt = "";
+        entry.nextReviewDate = "";
+      } else {
+        const todayStart = localDateStart(dateKey(new Date()));
+        const dueForToday = todayStart ? todayStart.toISOString() : now;
+        entry.dueAt = dueForToday;
+        entry.nextReviewDate = dateKey(new Date());
+        if (!entry.fsrsCard) {
+          entry.fsrsCard = null;
+        } else {
+          entry.fsrsCard.dueAt = dueForToday;
+        }
       }
 
       if (!saveVocabulary()) {
@@ -4645,9 +4724,9 @@
         fsrsSchedulerInstance = await library.DefaultScheduler({
           version: FSRS_MODEL_VERSION,
           desiredRetention: 0.9,
-          enableShortTerm: true,
-          learningSteps: ["1m", "10m"],
-          relearningSteps: ["10m"],
+          enableShortTerm: false,
+          learningSteps: [],
+          relearningSteps: [],
           enableFuzz: false,
           maximumInterval: 36500
         });
@@ -4665,7 +4744,77 @@
         String(date.getDate()).padStart(2, "0");
     }
 
+    function calendarDateFromValue(value) {
+      if (typeof value === "string" && /^\d{4}-\d{2}-\d{2}$/.test(value)) {
+        return value;
+      }
+      if (typeof value === "string" && /^\d{4}-\d{2}-\d{2}T/.test(value)) {
+        return value.slice(0, 10);
+      }
+      const date = value instanceof Date ? value : new Date(value);
+      return Number.isNaN(date.getTime()) ? "" : dateKey(date);
+    }
+
+    function stableUtcDueFromCalendarDate(calendarDate) {
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(calendarDate)) {
+        return "";
+      }
+      return calendarDate + "T12:00:00.000Z";
+    }
+
+    function localDateStart(dateKeyValue) {
+      const parts = /^(\d{4})-(\d{2})-(\d{2})$/.exec(dateKeyValue);
+      if (!parts) {
+        return null;
+      }
+      return new Date(Number(parts[1]), Number(parts[2]) - 1, Number(parts[3]), 0, 0, 0, 0);
+    }
+
+    function tomorrowLocalDateKey(value) {
+      const date = value instanceof Date ? value : new Date(value);
+      if (Number.isNaN(date.getTime())) {
+        return "";
+      }
+      const tomorrow = new Date(date.getFullYear(), date.getMonth(), date.getDate() + 1, 0, 0, 0, 0);
+      return dateKey(tomorrow);
+    }
+
+    function localCalendarDifference(fromValue, toValue) {
+      const from = localDateStart(dateKey(fromValue));
+      const to = localDateStart(dateKey(toValue));
+      if (!from || !to) {
+        return 0;
+      }
+      return Math.round((to.getTime() - from.getTime()) / 86400000);
+    }
+
+    function reviewLocalDate(review) {
+      if (review && typeof review.reviewLocalDate === "string" && /^\d{4}-\d{2}-\d{2}$/.test(review.reviewLocalDate)) {
+        return review.reviewLocalDate;
+      }
+      return review && review.reviewedAt ? dateKey(review.reviewedAt) : "";
+    }
+
+    function reviewedTodayEntry(entry, today) {
+      if (!entry.reviewHistory || !entry.reviewHistory.length) {
+        return false;
+      }
+      let reactivatedAt = entry.reactivatedAt ? Date.parse(entry.reactivatedAt) : 0;
+      return entry.reviewHistory.some(function (review) {
+        if (reviewLocalDate(review) !== today) {
+          return false;
+        }
+        return !reactivatedAt || Date.parse(review.reviewedAt) >= reactivatedAt;
+      });
+    }
+
     function entryDueAt(entry) {
+      if (entry.nextReviewDate) {
+        return stableUtcDueFromCalendarDate(entry.nextReviewDate);
+      }
+      if (entry.reviewStatus === "mastered") {
+        return "";
+      }
       return entry.fsrsCard && entry.fsrsCard.dueAt
         ? entry.fsrsCard.dueAt
         : (entry.dueAt || entry.addedAt);
@@ -4680,13 +4829,19 @@
     }
 
     function dueEntriesToday() {
-      const now = Date.now();
+      const today = dateKey(new Date());
       return vocabulary.filter(function (entry) {
-        const dueTime = new Date(entryDueAt(entry)).getTime();
+        if (!isReviewActive(entry) || reviewedTodayEntry(entry, today)) {
+          return false;
+        }
+        if (isNewToFsrs(entry)) {
+          return true;
+        }
+        const dueDate = entry.nextReviewDate || calendarDateFromValue(entryDueAt(entry));
         return isReviewActive(entry) &&
-          (isNewToFsrs(entry) || (Number.isFinite(dueTime) && dueTime <= now));
+          Boolean(dueDate) && dueDate <= today;
       }).sort(function (a, b) {
-        return new Date(entryDueAt(a)).getTime() - new Date(entryDueAt(b)).getTime();
+        return (a.nextReviewDate || "").localeCompare(b.nextReviewDate || "");
       });
     }
 
@@ -4695,39 +4850,109 @@
         window.clearTimeout(dueRefreshTimer);
         dueRefreshTimer = null;
       }
-
-      const now = Date.now();
-      const nextDue = vocabulary.reduce(function (earliest, entry) {
-        if (!isReviewActive(entry) || isNewToFsrs(entry)) {
-          return earliest;
-        }
-        const dueTime = new Date(entryDueAt(entry)).getTime();
-        return Number.isFinite(dueTime) && dueTime > now
-          ? Math.min(earliest, dueTime)
-          : earliest;
-      }, Infinity);
-
-      if (Number.isFinite(nextDue)) {
-        const delay = Math.min(nextDue - now + 50, 2147483000);
-        dueRefreshTimer = window.setTimeout(function () {
-          dueRefreshTimer = null;
-          renderReview();
-        }, Math.max(50, delay));
-      }
+      const now = new Date();
+      const nextMidnight = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1, 0, 0, 0, 50);
+      const delay = Math.min(Math.max(50, nextMidnight.getTime() - Date.now()), 2147483000);
+      dueRefreshTimer = window.setTimeout(function () {
+        dueRefreshTimer = null;
+        activeReviewWord = "";
+        answerRevealed = false;
+        renderReview();
+      }, delay);
     }
 
     function reviewedCountToday() {
       const today = dateKey(new Date());
-      return vocabulary.reduce(function (total, entry) {
-        return total + entry.reviewHistory.filter(function (review) {
-          return dateKey(review.reviewedAt) === today;
-        }).length;
-      }, 0);
+      return vocabulary.filter(function (entry) {
+        return isReviewActive(entry) && reviewedTodayEntry(entry, today);
+      }).length;
     }
 
     function formatDueDate(value) {
-      const date = new Date(value);
-      return Number.isNaN(date.getTime()) ? "Unknown date" : date.toLocaleString();
+      const calendarDate = typeof value === "string" && /^\d{4}-\d{2}-\d{2}$/.test(value)
+        ? value
+        : calendarDateFromValue(value);
+      const date = localDateStart(calendarDate);
+      return !date
+        ? "Unknown date"
+        : date.toLocaleDateString(undefined, { year: "numeric", month: "short", day: "numeric" });
+    }
+
+    function normalizeDailyFsrsCard(card, now) {
+      if (!card || typeof card !== "object") {
+        return card;
+      }
+      const result = Object.assign({}, card);
+      const today = dateKey(now);
+      let dueDate = calendarDateFromValue(card.dueAt);
+      const minimumDate = tomorrowLocalDateKey(now);
+      if (!dueDate) {
+        dueDate = minimumDate;
+      }
+      if (!dueDate || dueDate <= today) {
+        dueDate = minimumDate;
+      }
+      result.dueAt = stableUtcDueFromCalendarDate(dueDate);
+      const scheduledDays = localCalendarDifference(now, dueDate);
+      result.scheduledDays = Math.max(1, Number.isFinite(scheduledDays) ? scheduledDays : 1);
+      result.nextReviewDate = dueDate;
+      return result;
+    }
+
+    function migrateEntryToDailyScheduling(entry) {
+      if (!entry) {
+        return false;
+      }
+      let changed = false;
+      entry.reviewHistory = Array.isArray(entry.reviewHistory) ? entry.reviewHistory : [];
+      entry.reviewHistory.forEach(function (review) {
+        if (!review.reviewLocalDate && review.reviewedAt) {
+          review.reviewLocalDate = calendarDateFromValue(review.reviewedAt);
+          changed = true;
+        }
+      });
+      if (!entry.nextReviewDate) {
+        const legacyDate = calendarDateFromValue(
+          entry.dueAt || (entry.fsrsCard ? entry.fsrsCard.dueAt : "") || entry.addedAt
+        );
+        entry.nextReviewDate = entry.reviewStatus === "mastered"
+          ? ""
+          : (legacyDate || dateKey(new Date()));
+        changed = true;
+      }
+      if (entry.fsrsCard && typeof entry.fsrsCard === "object") {
+        if (entry.fsrsCard.dueAt) {
+          const dueDate = entry.nextReviewDate || calendarDateFromValue(entry.fsrsCard.dueAt);
+          const stableDue = stableUtcDueFromCalendarDate(dueDate);
+          if (stableDue && entry.fsrsCard.dueAt !== stableDue) {
+            entry.fsrsCard.dueAt = stableDue;
+            changed = true;
+          }
+        }
+        if (!Number.isFinite(entry.fsrsCard.scheduledDays) || entry.fsrsCard.scheduledDays < 1) {
+          entry.fsrsCard.scheduledDays = 1;
+          changed = true;
+        }
+      }
+      if (entry.reviewStatus !== "mastered" && entry.nextReviewDate) {
+        const stableDue = stableUtcDueFromCalendarDate(entry.nextReviewDate);
+        if (entry.dueAt !== stableDue) {
+          entry.dueAt = stableDue;
+          changed = true;
+        }
+      } else if (entry.reviewStatus === "mastered" && entry.dueAt !== "") {
+        entry.dueAt = "";
+        changed = true;
+      }
+      if (entry.dailyScheduleMigrationVersion !== "v1.2-daily") {
+        entry.dailyScheduleMigrationVersion = "v1.2-daily";
+        changed = true;
+      }
+      if (entry.fsrsVersion !== FSRS_MODEL_VERSION) {
+        entry.fsrsVersion = FSRS_MODEL_VERSION;
+        changed = true;
+      }
+      return changed;
     }
 
     function rehydrateFsrsCard(entry, scheduler, now) {
@@ -4774,11 +4999,11 @@
           row.className = "due-word";
           const description = document.createElement("div");
           addText(description, "strong", entry.word);
-          const dueDate = dateKey(entryDueAt(entry));
+          const dueDate = entry.nextReviewDate || calendarDateFromValue(entryDueAt(entry));
           const today = dateKey(new Date());
           const dueText = isNewToFsrs(entry)
             ? "New word"
-            : (dueDate < today ? "Overdue · due " : "Due today · ") + formatDueDate(entryDueAt(entry));
+            : (dueDate < today ? "Overdue · due " : "Due today · ") + formatDueDate(dueDate);
           addText(description, "small", dueText);
           row.appendChild(description);
           const reviewButton = createButton("Review", "secondary-button", function () {
@@ -4810,7 +5035,7 @@
           "p",
           vocabulary.length === 0
             ? "Add a word to begin reviewing."
-            : "You’re all caught up.",
+            : "All done for today! " + dueWords.length + " words remaining.",
           "empty-state"
         );
         return;
@@ -4864,6 +5089,14 @@
       if (!entry || reviewSubmitting || !answerRevealed) {
         return;
       }
+      const today = dateKey(new Date());
+      if (outcome === "Unknown" && reviewedTodayEntry(entry, today)) {
+        setMessage(elements.reviewMessage, "This word was already reviewed today.", "error");
+        activeReviewWord = "";
+        answerRevealed = false;
+        renderReview();
+        return;
+      }
 
       reviewSubmitting = true;
       setMessage(elements.reviewMessage, "Scheduling with FSRS…");
@@ -4879,15 +5112,17 @@
         }
 
         const result = fsrs.scheduler.review({ card: card, grade: grade, now: now });
-        const serializedCard = serializeFsrsCard(result.card);
+        const serializedCard = serializeFsrsCard(normalizeDailyFsrsCard(result.card, now));
         const historyItem = {
           reviewedAt: now.toISOString(),
+          reviewLocalDate: today,
           rating: outcome,
           fsrsRating: fsrsRating,
           action: "review",
           ratingValue: grade,
           dueBefore: new Date(card.dueAt).toISOString(),
           dueAfter: serializedCard.dueAt,
+          dueAfterDate: outcome === "Known" ? "" : (serializedCard.nextReviewDate || ""),
           scheduledDays: Number.isFinite(result.card.scheduledDays) ? result.card.scheduledDays : 0,
           stateBefore: card.state,
           stateAfter: result.card.state,
@@ -4898,6 +5133,7 @@
         entry.fsrsVersion = FSRS_MODEL_VERSION;
         entry.fsrsCard = serializedCard;
         entry.dueAt = outcome === "Known" ? "" : serializedCard.dueAt;
+        entry.nextReviewDate = outcome === "Known" ? "" : (serializedCard.nextReviewDate || "");
         entry.reviewStatus = outcome === "Known" ? "mastered" : "active";
         entry.masteredAt = outcome === "Known" ? now.toISOString() : "";
         entry.reviewHistory.push(historyItem);
@@ -4918,7 +5154,7 @@
         answerRevealed = false;
         setVocabularySavedMessage(elements.reviewMessage, outcome === "Known"
           ? "Marked Known. Removed from review."
-          : "Marked Unknown. Next review: " + formatDueDate(serializedCard.dueAt) + ".");
+          : "Marked Unknown. Next review: " + formatDueDate(entry.nextReviewDate) + ".");
       } catch (error) {
         console.error("FSRS review failed:", error);
         setMessage(
