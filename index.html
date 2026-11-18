@@ -437,7 +437,37 @@
       border: 1px solid #303b4d;
       border-radius: 12px;
       background: #151b25;
+      border-color: var(--category-border, #303b4d);
+      box-shadow: inset 0 1px 0 var(--category-highlight, transparent);
       overflow: hidden;
+    }
+
+    .vocabulary-category-due {
+      --category-color: #d78680;
+      --category-tint: rgba(215, 134, 128, 0.12);
+      --category-border: rgba(215, 134, 128, 0.24);
+      --category-highlight: rgba(215, 134, 128, 0.08);
+    }
+
+    .vocabulary-category-reviewed {
+      --category-color: #82b49a;
+      --category-tint: rgba(130, 180, 154, 0.12);
+      --category-border: rgba(130, 180, 154, 0.23);
+      --category-highlight: rgba(130, 180, 154, 0.08);
+    }
+
+    .vocabulary-category-upcoming {
+      --category-color: #83a9d2;
+      --category-tint: rgba(131, 169, 210, 0.12);
+      --category-border: rgba(131, 169, 210, 0.23);
+      --category-highlight: rgba(131, 169, 210, 0.08);
+    }
+
+    .vocabulary-category-known {
+      --category-color: #c9ad72;
+      --category-tint: rgba(201, 173, 114, 0.12);
+      --category-border: rgba(201, 173, 114, 0.23);
+      --category-highlight: rgba(201, 173, 114, 0.08);
     }
 
     .vocabulary-category-summary {
@@ -451,11 +481,29 @@
       color: #e7edf7;
     }
 
+    .vocabulary-category-summary > span:first-child {
+      display: flex;
+      align-items: center;
+    }
+
+    .vocabulary-category-summary > span:first-child::before {
+      width: 11px;
+      height: 11px;
+      margin-right: 11px;
+      border-radius: 50%;
+      background: var(--category-color, #8290a5);
+      box-shadow: 0 0 0 3px var(--category-tint, rgba(130, 144, 165, 0.12));
+      content: "";
+      flex: 0 0 11px;
+    }
+
     .vocabulary-category-summary strong {
       min-width: 34px;
       border-radius: 999px;
       padding: 4px 9px;
-      background: #303b4d;
+      border: 1px solid var(--category-border, #303b4d);
+      background: var(--category-tint, #303b4d);
+      color: #f0f3f8;
       text-align: center;
     }
 
@@ -4423,7 +4471,7 @@
 
       categories.forEach(function (category) {
         const details = document.createElement("details");
-        details.className = "vocabulary-category";
+        details.className = "vocabulary-category vocabulary-category-" + category.key;
         details.open = category.key === "due";
         const summary = document.createElement("summary");
         summary.className = "vocabulary-category-summary";
