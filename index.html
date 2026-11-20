@@ -4565,6 +4565,17 @@
     elements.sortWords.addEventListener("change", renderVocabulary);
     elements.cefrFilter.addEventListener("change", renderVocabulary);
 
+    function vocabularyCategoryKey(entry, today) {
+      if (!isReviewActive(entry)) {
+        return "known";
+      }
+      const dueDate = entry.nextReviewDate || calendarDateFromValue(entryDueAt(entry));
+      if (dueDate && dueDate > today) {
+        return "upcoming";
+      }
+      return reviewedTodayEntry(entry, today) ? "reviewed" : "due";
+    }
+
     function renderVocabulary() {
       renderVocabularyStatistics();
       if (lookupResult) {
@@ -4605,7 +4616,6 @@
       }
 
       const today = dateKey(new Date());
-      const dueSet = new Set(dueEntriesToday().map(function (entry) { return entry.fsrsId; }));
       const categories = [
         { key: "due", title: "Due Today", entries: [] },
         { key: "reviewed", title: "Reviewed Today", entries: [] },
@@ -4614,34 +4624,13 @@
       ];
       const categoryCounts = { due: 0, reviewed: 0, upcoming: 0, known: 0 };
       vocabulary.forEach(function (entry) {
-        if (!isReviewActive(entry)) {
-          categoryCounts.known += 1;
-        } else if (reviewedTodayEntry(entry, today)) {
-          categoryCounts.reviewed += 1;
-        } else if (dueSet.has(entry.fsrsId)) {
-          categoryCounts.due += 1;
-        } else {
-          const dueDate = entry.nextReviewDate || calendarDateFromValue(entryDueAt(entry));
-          if (dueDate && dueDate > today) {
-            categoryCounts.upcoming += 1;
-          } else {
-            categoryCounts.due += 1;
-          }
-        }
+        categoryCounts[vocabularyCategoryKey(entry, today)] += 1;
       });
+      const categoriesByKey = new Map(categories.map(function (category) {
+        return [category.key, category];
+      }));
       visibleWords.forEach(function (entry) {
-        let category;
-        if (!isReviewActive(entry)) {
-          category = categories[3];
-        } else if (reviewedTodayEntry(entry, today)) {
-          category = categories[1];
-        } else if (dueSet.has(entry.fsrsId)) {
-          category = categories[0];
-        } else {
-          const dueDate = entry.nextReviewDate || calendarDateFromValue(entryDueAt(entry));
-          category = dueDate && dueDate > today ? categories[2] : categories[0];
-        }
-        category.entries.push(entry);
+        categoriesByKey.get(vocabularyCategoryKey(entry, today)).entries.push(entry);
       });
 
       categories.forEach(function (category) {
