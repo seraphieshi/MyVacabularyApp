@@ -824,26 +824,51 @@
       display: grid;
       width: min(100%, 620px);
       margin: 0 auto;
-      grid-template-columns: repeat(2, minmax(0, 1fr));
+      grid-template-columns: repeat(3, minmax(0, 1fr));
       gap: 9px;
     }
 
-    .review-rating-button.unknown-button {
-      color: #9c454d;
-      background: #fff0f1;
+    .vocabulary-search-form {
+      display: flex;
+      flex: 1 1 270px;
+      gap: 8px;
     }
 
-    .review-rating-button.unknown-button:hover:not(:disabled) {
-      background: #ffe5e7;
+    .vocabulary-search-form input {
+      flex: 1;
     }
 
-    .review-rating-button.success-button {
-      color: #206b42;
-      background: #eaf6ef;
+    .review-rating-button {
+      padding: 10px 6px;
+      font-size: clamp(0.78rem, 3.8vw, 1.08rem);
+      overflow-wrap: anywhere;
     }
 
-    .review-rating-button.success-button:hover:not(:disabled) {
-      background: #dff0e6;
+    .review-rating-button.again-button {
+      color: #ffc2c6;
+      background: #43272d;
+    }
+
+    .review-rating-button.again-button:hover:not(:disabled) {
+      background: #553038;
+    }
+
+    .review-rating-button.remembered-button {
+      color: #b7caff;
+      background: #253652;
+    }
+
+    .review-rating-button.remembered-button:hover:not(:disabled) {
+      background: #304568;
+    }
+
+    .review-rating-button.mastered-button {
+      color: #b2f0c7;
+      background: #1d5135;
+    }
+
+    .review-rating-button.mastered-button:hover:not(:disabled) {
+      background: #246340;
     }
 
     .empty-state {
@@ -882,6 +907,15 @@
 
       .search-row button {
         width: 100%;
+      }
+
+      .vocabulary-search-form {
+        flex-basis: 100%;
+      }
+
+      .vocabulary-search-form button {
+        width: auto;
+        flex: 0 0 auto;
       }
 
       .auth-form,
@@ -1100,26 +1134,8 @@
       color: #e7edf7;
     }
 
-    .word-card .mastered-status,
-    .review-rating-button.success-button {
+    .word-card .mastered-status {
       color: #b2f0c7;
-    }
-
-    .review-rating-button.unknown-button {
-      color: #ffc2c6;
-      background: #43272d;
-    }
-
-    .review-rating-button.unknown-button:hover:not(:disabled) {
-      background: #553038;
-    }
-
-    .review-rating-button.success-button {
-      background: #1d5135;
-    }
-
-    .review-rating-button.success-button:hover:not(:disabled) {
-      background: #246340;
     }
 
     .cefr-green {
@@ -1236,7 +1252,10 @@
       <div class="vocabulary-categories" id="vocabularyCategories" aria-label="Vocabulary categories"></div>
       <p class="section-description">Your words stay on this device when signed out. Sign in to sync them across devices.</p>
       <div class="toolbar">
-        <input id="vocabularySearch" type="search" placeholder="Search saved words" aria-label="Search saved words">
+        <form class="vocabulary-search-form" id="vocabularySearchForm" role="search">
+          <input id="vocabularySearch" type="search" placeholder="Search saved words" aria-label="Search saved words">
+          <button type="submit" aria-label="Search vocabulary">🔍 Search</button>
+        </form>
         <select id="sortWords" aria-label="Sort saved words">
           <option value="newest">Newest first</option>
           <option value="az">Word A to Z</option>
@@ -1292,7 +1311,7 @@
       Scheduling uses <a href="https://github.com/open-spaced-repetition/ts-fsrs" target="_blank" rel="noopener noreferrer">ts-fsrs</a> (MIT).
       Your vocabulary stays on this device when signed out; sign in to sync across devices or export a backup.
     </footer>
-    <div class="app-version">1.2.1</div>
+    <div class="app-version">1.3.0</div>
   </main>
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -1341,6 +1360,7 @@
       dictionaryForm: document.getElementById("dictionaryForm"),
       dictionaryInput: document.getElementById("dictionaryInput"),
       searchButton: document.getElementById("searchButton"),
+      vocabularySearchForm: document.getElementById("vocabularySearchForm"),
       dictionaryMessage: document.getElementById("dictionaryMessage"),
       dictionaryResults: document.getElementById("dictionaryResults"),
       vocabularySearch: document.getElementById("vocabularySearch"),
@@ -2063,7 +2083,7 @@
       }
 
       const cached = cachedTranslation(key);
-      if (cached && cached.source === "manual" && primaryChineseMeaning(cached.text)) {
+      if (cached && cached.source === "manual" && cached.text.trim()) {
         entry.translationZh = cached.text;
         entry.translationSource = cached.source;
         return { ok: true, cacheFailure: false, source: "manual-cache" };
@@ -2082,6 +2102,19 @@
 
       try {
         const record = await ecdictRecordForWord(entry.word);
+        const latestSavedEntry = findVocabularyEntry(entry.word);
+        if (latestSavedEntry && latestSavedEntry.translationSource === "manual" &&
+            latestSavedEntry.translationZh.trim()) {
+          entry.translationZh = latestSavedEntry.translationZh;
+          entry.translationSource = "manual";
+          return { ok: true, cacheFailure: false, source: "user-edited" };
+        }
+        const latestCached = cachedTranslation(key);
+        if (latestCached && latestCached.source === "manual" && latestCached.text.trim()) {
+          entry.translationZh = latestCached.text;
+          entry.translationSource = "manual";
+          return { ok: true, cacheFailure: false, source: "manual-cache" };
+        }
         const sourceMeaning = ecdictMeaningForEntry(record, entry);
         const translated = sourceMeaning ? (curatedChineseTranslation(entry) || sourceMeaning) : "";
         if (!translated) {
@@ -2414,12 +2447,16 @@
       merged.known = Math.max(
         local.known,
         cloud.known,
-        (base ? base.known : 0) + addedEvents.filter(function (item) { return item.rating === "Known"; }).length
+        (base ? base.known : 0) + addedEvents.filter(function (item) {
+          return item.rating === "Known" || item.rating === "Remembered" || item.rating === "Mastered";
+        }).length
       );
       merged.unknown = Math.max(
         local.unknown,
         cloud.unknown,
-        (base ? base.unknown : 0) + addedEvents.filter(function (item) { return item.rating === "Unknown"; }).length
+        (base ? base.unknown : 0) + addedEvents.filter(function (item) {
+          return item.rating === "Unknown" || item.rating === "Again";
+        }).length
       );
 
       const specialFields = new Set([
@@ -4135,7 +4172,9 @@
       heading.appendChild(addButton);
       card.appendChild(heading);
 
-      renderEntryTranslation(card, entry);
+      renderEditableMeaning(card, entry, elements.dictionaryMessage, function () {
+        renderDictionaryResult(lookupResult);
+      });
       renderCefrBadge(card, entry);
       renderEntryExample(card, entry);
       if (translationRetryable &&
@@ -4171,6 +4210,124 @@
         translationLookupPending ? "Looking up the Chinese meaning…" : "Chinese meaning unavailable",
         "translation-value"
       );
+    }
+
+    function renderEditableMeaning(parent, entry, messageElement, onSaved) {
+      renderEntryTranslation(parent, entry);
+      const editButton = createButton("Edit Meaning", "secondary-button", function () {
+        editor.hidden = !editor.hidden;
+        if (!editor.hidden) {
+          const savedEntry = findVocabularyEntry(entry.word);
+          const displayedEntry = savedEntry && savedEntry.translationSource === "manual"
+            ? savedEntry
+            : entry;
+          meaningInput.value = displayedChineseMeaning(displayedEntry);
+          meaningInput.focus();
+        }
+      });
+      parent.appendChild(editButton);
+
+      const editor = document.createElement("form");
+      editor.className = "word-editor";
+      editor.hidden = true;
+      const meaningInput = document.createElement("input");
+      meaningInput.type = "text";
+      const savedEntry = findVocabularyEntry(entry.word);
+      const displayedEntry = savedEntry && savedEntry.translationSource === "manual"
+        ? savedEntry
+        : entry;
+      meaningInput.value = displayedChineseMeaning(displayedEntry);
+      meaningInput.required = true;
+      meaningInput.setAttribute("aria-label", "Chinese meaning");
+      addLabeledControl(editor, "Chinese meaning", meaningInput);
+      const actions = document.createElement("div");
+      actions.className = "word-card-actions";
+      const saveButton = document.createElement("button");
+      saveButton.type = "submit";
+      saveButton.textContent = "Save Meaning";
+      actions.appendChild(saveButton);
+      const cancelButton = createButton("Cancel", "secondary-button", function () {
+        editor.hidden = true;
+      });
+      actions.appendChild(cancelButton);
+      editor.appendChild(actions);
+      editor.addEventListener("submit", function (event) {
+        event.preventDefault();
+        const meaning = meaningInput.value.trim();
+        if (!meaning) {
+          meaningInput.focus();
+          return;
+        }
+        if (isUnavailableMeaning(meaning)) {
+          setMessage(messageElement, "Please enter a Chinese meaning instead of an unavailable-meaning message.", "error");
+          meaningInput.focus();
+          return;
+        }
+        const result = saveManualMeaning(entry, meaning, messageElement);
+        if (!result) {
+          return;
+        }
+        editor.hidden = true;
+        if (result.cacheSaved) {
+          setMessage(messageElement, "Chinese meaning saved.", "success");
+        }
+        onSaved();
+      });
+      parent.appendChild(editor);
+    }
+
+    function saveManualMeaning(entry, meaning, messageElement) {
+      if (cloudUserId && !cloudReady) {
+        setMessage(messageElement, "Checking your cloud vocabulary. Try again shortly.", "error");
+        return null;
+      }
+      const savedEntry = findVocabularyEntry(entry.word);
+      const previousEntry = {
+        translationZh: entry.translationZh,
+        translationSource: entry.translationSource
+      };
+      const previousSaved = savedEntry && savedEntry !== entry
+        ? {
+          translationZh: savedEntry.translationZh,
+          translationSource: savedEntry.translationSource
+        }
+        : null;
+      entry.translationZh = meaning;
+      entry.translationSource = "manual";
+      if (savedEntry) {
+        savedEntry.translationZh = meaning;
+        savedEntry.translationSource = "manual";
+        if (!saveVocabulary()) {
+          Object.assign(entry, previousEntry);
+          if (previousSaved) {
+            Object.assign(savedEntry, previousSaved);
+          }
+          return null;
+        }
+      }
+
+      const cacheSaved = storeTranslation(
+        translationKey(entry.word, "word", entry.word, ""),
+        meaning,
+        "manual",
+        messageElement
+      );
+      if (!cacheSaved && !savedEntry) {
+        Object.assign(entry, previousEntry);
+        return null;
+      }
+      if (lookupResult && normalizedWordKey(lookupResult.word) === normalizedWordKey(entry.word)) {
+        lookupResult.translationZh = meaning;
+        lookupResult.translationSource = "manual";
+      }
+      if (!cacheSaved && savedEntry) {
+        setMessage(
+          messageElement,
+          "Meaning saved to My Vocabulary, but the translation cache could not be updated.",
+          "error"
+        );
+      }
+      return { cacheSaved: cacheSaved };
     }
 
     function displayedChineseMeaning(entry) {
@@ -4356,7 +4513,9 @@
 
       const existing = findVocabularyEntry(entry.word);
       if (existing) {
-        renderEntryTranslation(card, existing);
+        renderEditableMeaning(card, existing, elements.dictionaryMessage, function () {
+          renderManualEntryForm(entry);
+        });
         addText(card, "p", "This expression is already in My Vocabulary.", "message");
         elements.dictionaryResults.replaceChildren(card);
         return;
@@ -4398,6 +4557,10 @@
       elements.dictionaryResults.replaceChildren(card);
     }
 
+    elements.vocabularySearchForm.addEventListener("submit", function (event) {
+      event.preventDefault();
+      renderVocabulary();
+    });
     elements.vocabularySearch.addEventListener("input", renderVocabulary);
     elements.sortWords.addEventListener("change", renderVocabulary);
     elements.cefrFilter.addEventListener("change", renderVocabulary);
@@ -4410,7 +4573,8 @@
       const query = elements.vocabularySearch.value.trim().toLowerCase();
       const selectedLevel = elements.cefrFilter.value;
       let visibleWords = vocabulary.filter(function (entry) {
-        const matchesSearch = normalizedWordKey(entry.word).includes(query);
+        const searchText = normalizedWordKey(entry.word + " " + entry.translationZh);
+        const matchesSearch = searchText.includes(query);
         const matchesLevel = selectedLevel === "all" ||
           (selectedLevel === "unclassified" ? !entry.cefrLevel : entry.cefrLevel === selectedLevel);
         return matchesSearch && matchesLevel;
@@ -4435,6 +4599,9 @@
       if (vocabulary.length === 0) {
         addText(elements.vocabularyCategories, "p", "Your vocabulary is empty. Search a word in Dictionary and add it here.", "empty-state");
         return;
+      }
+      if (visibleWords.length === 0) {
+        addText(elements.vocabularyList, "p", "No words match your search and filters.", "empty-state");
       }
 
       const today = dateKey(new Date());
@@ -4504,7 +4671,7 @@
         const actions = document.createElement("div");
         actions.className = "word-card-actions";
         actions.appendChild(createButton(
-          entry.reviewStatus === "mastered" ? "Move to Unknown" : "Mark Known",
+          entry.reviewStatus === "mastered" ? "Move to Unknown" : "Mark Mastered",
           "secondary-button",
           function () {
             setVocabularyKnown(entry, entry.reviewStatus !== "mastered");
@@ -4890,12 +5057,8 @@
         if (!isReviewActive(entry) || reviewedTodayEntry(entry, today)) {
           return false;
         }
-        if (isNewToFsrs(entry)) {
-          return true;
-        }
         const dueDate = entry.nextReviewDate || calendarDateFromValue(entryDueAt(entry));
-        return isReviewActive(entry) &&
-          Boolean(dueDate) && dueDate <= today;
+        return Boolean(dueDate) && dueDate <= today;
       }).sort(function (a, b) {
         return (a.nextReviewDate || "").localeCompare(b.nextReviewDate || "");
       });
@@ -4934,13 +5097,15 @@
         : date.toLocaleDateString(undefined, { year: "numeric", month: "short", day: "numeric" });
     }
 
-    function normalizeDailyFsrsCard(card, now) {
+    function normalizeDailyFsrsCard(card, now, requiredDueDate) {
       if (!card || typeof card !== "object") {
         return card;
       }
       const result = Object.assign({}, card);
       const today = dateKey(now);
-      let dueDate = calendarDateFromValue(card.dueAt);
+      let dueDate = /^\d{4}-\d{2}-\d{2}$/.test(requiredDueDate || "")
+        ? requiredDueDate
+        : calendarDateFromValue(card.dueAt);
       const minimumDate = tomorrowLocalDateKey(now);
       if (!dueDate) {
         dueDate = minimumDate;
@@ -5106,7 +5271,10 @@
       const details = document.createElement("div");
       details.className = "review-details";
       details.hidden = !answerRevealed;
-      renderEntryTranslation(details, entry);
+      renderEditableMeaning(details, entry, elements.reviewMessage, function () {
+        renderVocabulary();
+        renderReview();
+      });
       if (entry.cefrLevel) {
         addText(details, "span", "CEFR: " + cefrLabel(entry), "cefr-badge " + cefrClass(entry.cefrLevel));
       }
@@ -5127,12 +5295,15 @@
       elements.reviewCard.appendChild(revealActions);
 
       [
-        ["❌ Unknown", "Unknown", "unknown-button"],
-        ["✅ Known", "Known", "success-button"]
+        ["🔴 Again", "Again", "again-button", "I cannot remember this word."],
+        ["🔵 Remembered", "Remembered", "remembered-button", "I remember the meaning but still need practice."],
+        ["🟢 Mastered", "Mastered", "mastered-button", "I know this word completely."]
       ].forEach(function (rating) {
         const button = createButton(rating[0], "review-rating-button " + rating[2], function () {
           recordFsrsReview(rating[1]);
         });
+        button.title = rating[3];
+        button.setAttribute("aria-label", rating[0] + ". " + rating[3]);
         button.disabled = !answerRevealed || reviewSubmitting;
         elements.reviewRatingActions.appendChild(button);
       });
@@ -5146,7 +5317,7 @@
         return;
       }
       const today = dateKey(new Date());
-      if (outcome === "Unknown" && reviewedTodayEntry(entry, today)) {
+      if (reviewedTodayEntry(entry, today)) {
         setMessage(elements.reviewMessage, "This word was already reviewed today.", "error");
         activeReviewWord = "";
         answerRevealed = false;
@@ -5161,14 +5332,25 @@
         const fsrs = await getFsrsScheduler();
         const now = new Date();
         const card = rehydrateFsrsCard(entry, fsrs.scheduler, now);
-        const fsrsRating = outcome === "Known" ? "Good" : "Again";
+        const fsrsRating = {
+          Again: "Again",
+          Remembered: "Good",
+          Mastered: "Easy"
+        }[outcome];
+        if (!fsrsRating) {
+          throw new Error("The selected review outcome is not supported.");
+        }
         const grade = fsrs.library.Rating[fsrsRating];
         if (!Number.isInteger(grade)) {
           throw new Error("The FSRS library does not support the mapped rating.");
         }
 
         const result = fsrs.scheduler.review({ card: card, grade: grade, now: now });
-        const serializedCard = serializeFsrsCard(normalizeDailyFsrsCard(result.card, now));
+        const serializedCard = serializeFsrsCard(normalizeDailyFsrsCard(
+          result.card,
+          now,
+          outcome === "Again" ? tomorrowLocalDateKey(now) : ""
+        ));
         const historyItem = {
           reviewedAt: now.toISOString(),
           reviewLocalDate: today,
@@ -5178,7 +5360,7 @@
           ratingValue: grade,
           dueBefore: new Date(card.dueAt).toISOString(),
           dueAfter: serializedCard.dueAt,
-          dueAfterDate: outcome === "Known" ? "" : (serializedCard.nextReviewDate || ""),
+          dueAfterDate: outcome === "Mastered" ? "" : (serializedCard.nextReviewDate || ""),
           scheduledDays: Number.isFinite(result.card.scheduledDays) ? result.card.scheduledDays : 0,
           stateBefore: card.state,
           stateAfter: result.card.state,
@@ -5188,13 +5370,13 @@
         entry.fsrsId = entry.fsrsId || card.cardId;
         entry.fsrsVersion = FSRS_MODEL_VERSION;
         entry.fsrsCard = serializedCard;
-        entry.dueAt = outcome === "Known" ? "" : serializedCard.dueAt;
-        entry.nextReviewDate = outcome === "Known" ? "" : (serializedCard.nextReviewDate || "");
-        entry.reviewStatus = outcome === "Known" ? "mastered" : "active";
-        entry.masteredAt = outcome === "Known" ? now.toISOString() : "";
+        entry.dueAt = outcome === "Mastered" ? "" : serializedCard.dueAt;
+        entry.nextReviewDate = outcome === "Mastered" ? "" : (serializedCard.nextReviewDate || "");
+        entry.reviewStatus = outcome === "Mastered" ? "mastered" : "active";
+        entry.masteredAt = outcome === "Mastered" ? now.toISOString() : "";
         entry.reviewHistory.push(historyItem);
         entry.reviews += 1;
-        if (outcome === "Unknown") {
+        if (outcome === "Again") {
           entry.unknown += 1;
         } else {
           entry.known += 1;
@@ -5208,9 +5390,9 @@
 
         activeReviewWord = "";
         answerRevealed = false;
-        setVocabularySavedMessage(elements.reviewMessage, outcome === "Known"
-          ? "Marked Known. Removed from review."
-          : "Marked Unknown. Next review: " + formatDueDate(entry.nextReviewDate) + ".");
+        setVocabularySavedMessage(elements.reviewMessage, outcome === "Mastered"
+          ? "Mastered. Removed from review."
+          : outcome + ". Next review: " + formatDueDate(entry.nextReviewDate) + ".");
       } catch (error) {
         console.error("FSRS review failed:", error);
         setMessage(
